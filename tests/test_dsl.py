@@ -33,6 +33,16 @@ def test_rotation_swaps_footprint_around_fixed_corner(rot, size_x, size_z):
     assert p.cells() == {(3 + dx, 5 + dz) for dx in range(size_x) for dz in range(size_z)}
 
 
+@pytest.mark.parametrize("rot", [0, 90, 180, 270])
+@pytest.mark.parametrize("size", ["1x2", "2x4", "1x4"])
+def test_rotated_studs_cover_exactly_the_footprint(rot, size):
+    m = Model("t")
+    with m.step():
+        m.brick(size, x=-2, z=7, y=0, color="red", rot=rot)
+    p = m.placements[0]
+    assert p.stud_cells() == p.cells() == p.antistud_cells()
+
+
 def test_brick_is_three_plates_tall():
     m = Model("t")
     with m.step():

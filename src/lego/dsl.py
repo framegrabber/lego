@@ -55,6 +55,30 @@ class Placement:
     def levels(self) -> range:
         return range(self.y, self.y + self.part.height)
 
+    @property
+    def top(self) -> int:
+        """Level just above the part, where its studs connect."""
+        return self.y + self.part.height
+
+    def stud_cells(self) -> frozenset[Cell]:
+        """World (x, z) cells with a stud on top."""
+        return frozenset(map(self._to_world, self.part.studs))
+
+    def antistud_cells(self) -> frozenset[Cell]:
+        """World (x, z) cells that accept a stud from below."""
+        return frozenset(map(self._to_world, self.part.antistuds))
+
+    def _to_world(self, cell: Cell) -> Cell:
+        # Same rotation as the LDraw writer, R(θ) = [[c, 0, s], [0, 1, 0], [−s, 0, c]], applied
+        # to the cell centre relative to the part centre. Doubled coordinates keep it integer.
+        c = (1, 0, -1, 0)[self.rot // 90]
+        s = (0, 1, 0, -1)[self.rot // 90]
+        lx = 2 * cell[0] + 1 - self.part.width
+        lz = 2 * cell[1] + 1 - self.part.depth
+        wx = 2 * self.x + self.size_x + c * lx + s * lz
+        wz = 2 * self.z + self.size_z - s * lx + c * lz
+        return (wx - 1) // 2, (wz - 1) // 2
+
 
 class Model:
     def __init__(self, name: str) -> None:
