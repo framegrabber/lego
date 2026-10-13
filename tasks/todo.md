@@ -10,9 +10,9 @@ Plan: [plan.md](plan.md). Standard verification for every task: `uv run pytest`,
 LDraw `complete.zip` into `ldraw/` (skip if present) and runs Playwright's Chromium install. Add
 `playwright` as a runtime dependency.
 **Acceptance:**
-- [ ] `uv run lego setup` leaves `ldraw/parts/3001.dat` and `ldraw/LDConfig.ldr` on disk
-- [ ] Re-running is a no-op and says so
-- [ ] Failure (network, bad zip) exits non-zero with a clear message
+- [x] `uv run lego setup` leaves `ldraw/parts/3001.dat` and `ldraw/LDConfig.ldr` on disk
+- [x] Re-running is a no-op and says so
+- [x] Failure (network, bad zip) exits non-zero with a clear message
 **Verify:** run it twice on a clean checkout; check files exist.
 **Depends on:** none · **Files:** `pyproject.toml`, `src/lego/cli.py`, `src/lego/setup.py`, `src/lego/__init__.py` · **Size:** S
 
@@ -22,9 +22,9 @@ model URL from the query string, orbit camera, step slider using `buildingStep` 
 `numBuildingSteps`. `lego preview FILE` serves `web/`, `ldraw/` and the model's directory on
 localhost and prints the URL. Add `models/hello.ldr` (hand-written, ~10 parts, 2 steps).
 **Acceptance:**
-- [ ] `uv run lego preview models/hello.ldr` prints a URL; the page shows the model with real part geometry and colors
-- [ ] Slider steps through the 2 steps
-- [ ] Works with network disabled (no CDN)
+- [x] `uv run lego preview models/hello.ldr` prints a URL; the page shows the model with real part geometry and colors
+- [x] Slider steps through the 2 steps
+- [x] Works with network disabled (no CDN) — 0 external requests; hello.ldr loads in 0.1 s
 **Verify:** open in browser, screenshot; note load time.
 **Depends on:** 1 · **Files:** `web/index.html`, `web/main.js`, `web/vendor/…`, `src/lego/preview.py`, `models/hello.ldr` · **Size:** M
 
@@ -32,14 +32,14 @@ localhost and prints the URL. Add `models/hello.ldr` (hand-written, ~10 parts, 2
 **Description:** Playwright loads the preview page with `?view=front|side|top|iso&step=N`, waits
 for a "ready" flag set by the page, saves PNGs.
 **Acceptance:**
-- [ ] `uv run lego render models/hello.ldr -o out/hello/` writes 4 PNGs showing the model
-- [ ] `--step 1` renders only step 1's parts
-- [ ] Clear error when the model fails to load (no blank PNG)
+- [x] `uv run lego render models/hello.ldr -o out/hello/` writes 4 PNGs showing the model
+- [x] `--step 1` renders only step 1's parts
+- [x] Clear error when the model fails to load (no blank PNG)
 **Verify:** run it; view the PNGs.
 **Depends on:** 2 · **Files:** `src/lego/render.py`, `src/lego/cli.py`, `web/main.js` · **Size:** S
 
 ### Checkpoint: First picture
-- [ ] Hand-written model visible in browser and as PNGs
+- [x] Hand-written model visible in browser and as PNGs
 - [ ] Review with human
 
 ## Phase 1 — Model core
