@@ -40,6 +40,7 @@ class Issue:
     message: str
     parts: list[PartRef]
     at: tuple[int, int, int] | None = None  # grid cell (x, y, z) where the problem is
+    level: str = "error"  # "error" fails the check; "warning" is reported but passes
 
 
 @dataclass
@@ -47,10 +48,11 @@ class Report:
     check: str  # "B1" … "B7"
     name: str
     issues: list[Issue] = field(default_factory=list)
+    score: float | None = None  # graded checks only (B7)
 
     @property
     def ok(self) -> bool:
-        return not self.issues
+        return not any(i.level == "error" for i in self.issues)
 
 
 def describe(p: Placement) -> str:
@@ -65,8 +67,8 @@ def to_json(reports: list[Report]) -> dict:
     """Stable JSON shape:
 
     {"ok": bool,
-     "checks": [{"check": "B2", "name": "no collisions", "ok": false,
-                 "issues": [{"message": str,
+     "checks": [{"check": "B2", "name": "no collisions", "ok": false, "score": float | null,
+                 "issues": [{"message": str, "level": "error" | "warning",
                              "parts": [{"index": int, "step": int, "call": str,
                                         "sub": str | null, "sub_step": int | null}],
                              "at": [x, y, z] | null}]}]}
@@ -74,7 +76,13 @@ def to_json(reports: list[Report]) -> dict:
     return {
         "ok": all(r.ok for r in reports),
         "checks": [
-            {"check": r.check, "name": r.name, "ok": r.ok, "issues": [asdict(i) for i in r.issues]}
+            {
+                "check": r.check,
+                "name": r.name,
+                "ok": r.ok,
+                "score": None if r.score is None else round(r.score, 2),
+                "issues": [asdict(i) for i in r.issues],
+            }
             for r in reports
         ],
     }
@@ -83,10 +91,15 @@ def to_json(reports: list[Report]) -> dict:
 def to_text(reports: list[Report]) -> str:
     lines = []
     for r in reports:
-        lines.append(f"{r.check} {r.name}: {'ok' if r.ok else 'FAIL'}")
+        status = "ok" if r.ok else "FAIL"
+        if r.ok and r.issues:
+            status = "ok with warnings"
+        score = f" (score {r.score:.2f})" if r.score is not None else ""
+        lines.append(f"{r.check} {r.name}: {status}{score}")
         for issue in r.issues:
             at = f" at {issue.at}" if issue.at else ""
-            lines.append(f"  - {issue.message}{at}")
+            mark = "warning: " if issue.level == "warning" else ""
+            lines.append(f"  - {mark}{issue.message}{at}")
             for p in issue.parts:
                 where = f"step {p.step}"
                 if p.sub is not None:

@@ -51,14 +51,19 @@ steps on their own ("Build 2× the leg") right before the main step that attache
 
 ### Stability score (B7)
 
-Every part gets a score in [0, 1] (1 = no risk). The model score is the minimum over all parts and
-all intermediate steps (a half-built model must not fall apart in a kid's hands either).
+Every part gets a score in [0, 1] (1 = no risk), evaluated after every step.
 
-- **Heuristic v1:** for each part, find the weakest set of stud connections holding it (and
-  everything it carries) to the ground, i.e. the minimum stud cut in the connection graph. Compare
-  the clutch of that cut against the load it carries and its lever arm (overhang distance).
-  Free-standing models also get a tipping term: centre of mass must lie inside the support
-  footprint on the table.
+- **Heuristic v1 (implemented, `check/stability.py`):** parts on the bottom layer rest on the
+  table. For every other part p, S(p) = p plus every part whose only way down to the table runs
+  through p (articulation-point DFS). Its C support studs carry demand W · (lever + hanging +
+  twist): W = weight of S(p) in 2×2-brick units, lever = distance from S(p)'s centre of weight
+  to p's support studs, +1 if it hangs underneath, +0.5 if a wider part sits on one stud.
+  Score = 4C / (4C + demand). Free-standing models also get a tipping score for the finished
+  model: its centre of weight must lie inside the convex hull of the table footprint.
+- **Decision (2026-10-13, overnight, pending user review):** a weak point in the **finished**
+  model is an error (below `fail`); a weak point that exists **only while building** is at most
+  a warning, because the kid is holding the model. Tipping is checked only for the finished
+  model. The reported model score is the finished model's minimum.
 - **v2 (later):** StableLego-style force analysis, plugged in behind the same score interface.
 
 Two configurable thresholds turn the score into a verdict:
@@ -69,7 +74,8 @@ Two configurable thresholds turn the score into a verdict:
 | `fail` ≤ score < `warn` | fragile | delivered; Claude should try to improve it; flagged parts are highlighted in the preview as "hold carefully" |
 | < `fail` (default 0.3) | unstable | not delivered; Claude must fix |
 
-Default thresholds are placeholders, to be calibrated against physical builds.
+Default thresholds are placeholders, to be calibrated against physical builds. With them, all
+five eval designs pass; the racing car and micro TIE fighter carry while-building warnings.
 
 ### Likeness (soft gate)
 

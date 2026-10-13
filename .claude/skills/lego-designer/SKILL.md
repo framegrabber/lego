@@ -140,9 +140,11 @@ with m.step():
   usual fix: put the wedged part in the **same step** as the part above it (a part hanging
   under something goes in the same step as that thing).
 - **B6 step size**: at most 6 parts per step.
-- **Stability is not checked yet**: overlap joints like a brick wall, avoid parts held by a
-  single stud that carry weight, overhang at most 2 studs past the support, and hold every
-  overhanging part by at least 2 studs.
+- **B7 stable** (graded, score 0–1): a part that holds other parts with few studs, far out
+  (centre of weight past its studs) or hanging underneath scores low. Below 0.3 in the finished
+  model fails; 0.3–0.6, or any weak point only while building, is a **warning**: improve it if
+  you can (more studs under it, shorter overhang, support the far end, or build the far end's
+  support earlier). The finished model must not tip over: keep its weight over its footprint.
 - **Sub-assemblies** are checked with their own steps; issues inside one start with "inside
   sub-assembly 'leg'" and name the part with its `leg.brick(...)` call.
 
