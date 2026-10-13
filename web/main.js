@@ -37,13 +37,16 @@ document.getElementById('viewport').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf4f4f4);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x888888, 2.0));
-const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 2.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.8);
 sun.position.set(1, 2, 1.5);
 scene.add(sun);
 
-const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 100000);
-const controls = new OrbitControls(camera, renderer.domElement);
+const perspective = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 100000);
+// Straight views (front/side/top) in renders are orthographic so lengths and alignments read true.
+const orthographic = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 100000);
+let camera = perspective;
+const controls = new OrbitControls(perspective, renderer.domElement);
 controls.enableDamping = true;
 
 function render() {
@@ -52,14 +55,30 @@ function render() {
 
 function frameModel(model, direction) {
   const sphere = new THREE.Box3().setFromObject(model).getBoundingSphere(new THREE.Sphere());
-  const fov = THREE.MathUtils.degToRad(camera.fov);
-  const halfAngle = Math.min(fov, 2 * Math.atan(Math.tan(fov / 2) * camera.aspect)) / 2;
-  const distance = (sphere.radius / Math.sin(halfAngle)) * 1.05;
   const dir = new THREE.Vector3(...direction).normalize();
-  camera.position.copy(sphere.center).addScaledVector(dir, distance);
-  camera.near = distance / 100;
-  camera.far = distance * 100;
-  camera.updateProjectionMatrix();
+  if (camera === orthographic) {
+    const aspect = window.innerWidth / window.innerHeight;
+    const half = sphere.radius * 1.05;
+    Object.assign(orthographic, {
+      left: -half * Math.max(aspect, 1),
+      right: half * Math.max(aspect, 1),
+      top: half / Math.min(aspect, 1),
+      bottom: -half / Math.min(aspect, 1),
+      near: sphere.radius / 100,
+      far: sphere.radius * 10,
+    });
+    orthographic.position.copy(sphere.center).addScaledVector(dir, sphere.radius * 3);
+    orthographic.lookAt(sphere.center);
+    orthographic.updateProjectionMatrix();
+    return;
+  }
+  const fov = THREE.MathUtils.degToRad(perspective.fov);
+  const halfAngle = Math.min(fov, 2 * Math.atan(Math.tan(fov / 2) * perspective.aspect)) / 2;
+  const distance = (sphere.radius / Math.sin(halfAngle)) * 1.05;
+  perspective.position.copy(sphere.center).addScaledVector(dir, distance);
+  perspective.near = distance / 100;
+  perspective.far = distance * 100;
+  perspective.updateProjectionMatrix();
   controls.target.copy(sphere.center);
   controls.update();
 }
@@ -130,16 +149,22 @@ function setLook(object, look) {
   object.traverse((child) => {
     if (!child.isMesh && !child.isLine) return;
     if (!child.userData.ownMaterial) {
-      // Materials are shared between parts of one color; give each object its own copy.
-      child.material = Array.isArray(child.material)
-        ? child.material.map((m) => m.clone())
-        : child.material.clone();
+      // Materials are shared between parts of one color; give each object its own copy and
+      // remember its own transparency (see-through bricks).
+      child.material = [child.material].flat().map((m) => {
+        const own = m.clone();
+        own.userData.base = { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite };
+        return own;
+      });
+      if (child.material.length === 1) child.material = child.material[0];
       child.userData.ownMaterial = true;
     }
     for (const m of [child.material].flat()) {
-      m.transparent = look === 'faded';
-      m.opacity = look === 'faded' ? FADED_OPACITY : 1;
-      m.depthWrite = look !== 'faded';
+      const base = m.userData.base;
+      const faded = look === 'faded';
+      m.transparent = faded || base.transparent;
+      m.opacity = faded ? base.opacity * FADED_OPACITY : base.opacity;
+      m.depthWrite = faded ? false : base.depthWrite;
     }
   });
 }
@@ -193,17 +218,26 @@ function describeEntry(entry, index, total, info) {
   return `${base} · Attach ${what}`;
 }
 
+// What the kid adds in this step: parts, plus finished sub-assemblies being attached.
+function newItems(info, entry) {
+  const step = stepInfo(info, entry);
+  return [
+    ...(step?.parts ?? []).map((p) => `${p.count}× ${p.part} · ${p.color}`),
+    ...(step?.attach ?? []).map((a) => `${a.count}× ${a.name} (built in the steps before)`),
+  ];
+}
+
 function showCallout(info, entry) {
   const callout = document.getElementById('callout');
-  const parts = stepInfo(info, entry)?.parts ?? [];
+  const items = newItems(info, entry);
   callout.replaceChildren(
-    ...parts.map((p) => {
+    ...items.map((text) => {
       const row = document.createElement('div');
-      row.textContent = `${p.count}× ${p.part} · ${p.color}`;
+      row.textContent = text;
       return row;
     }),
   );
-  callout.hidden = parts.length === 0;
+  callout.hidden = items.length === 0;
 }
 
 function setupStepControls(model, top, sequence, info, initialStep, direction) {
@@ -264,12 +298,13 @@ async function main() {
   if (headless) {
     const entry = sequence[requested - 1];
     const weak = showEntry(top, entry, requested === numSteps, info);
+    if (viewName !== 'iso') camera = orthographic;
     frameModel(entry.sub ?? model, direction);
     render();
-    const parts = (stepInfo(info, entry)?.parts ?? []).map((p) => `${p.count}× ${p.part} ${p.color}`);
+    const items = newItems(info, entry);
     window.legoStep = [
       describeEntry(entry, requested, numSteps, info),
-      parts.length ? `new parts: ${parts.join(', ')}` : '',
+      items.length ? `new: ${items.join(', ')}` : '',
       weak ? 'pink box = part not well supported yet (hold carefully)' : '',
     ].filter(Boolean).join(' | ');
     window.legoReady = true;
