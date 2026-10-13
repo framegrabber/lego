@@ -11,6 +11,15 @@ Every part belongs to the step it was placed in:
     m = Model("wall")
     with m.step():
         m.brick("2x4", x=0, z=0, y=0, color="red")
+
+Sub-assemblies are built separately in their own coordinates and steps, then attached in one
+step of the main model (one level deep):
+
+    leg = m.subassembly("leg")
+    with leg.step():
+        leg.brick("2x2", x=0, z=0, y=0, color="grey")
+    with m.step():
+        m.attach(leg, x=4, y=0, z=0)       # leg's (0, 0, 0) lands at (4, 0, 0)
 """
 
 from collections.abc import Callable, Generator
@@ -36,7 +45,10 @@ class Placement:
     z: int
     rot: int
     color: int  # LDraw color code
-    step: int  # 0-based
+    step: int  # 0-based main step (for sub-assembly parts: the step that attaches them)
+    sub: str | None = None  # attachment label, e.g. "leg" or "leg#2" for a second copy
+    sub_index: int | None = None  # index of this part within the sub-assembly
+    sub_step: int | None = None  # 0-based step within the sub-assembly
 
     @property
     def size_x(self) -> int:
@@ -80,12 +92,27 @@ class Placement:
         return (wx - 1) // 2, (wz - 1) // 2
 
 
+@dataclass(frozen=True)
+class Attachment:
+    label: str  # unique per attachment: sub-assembly name, "#2" etc. for repeats
+    sub: Model
+    x: int
+    y: int
+    z: int
+    rot: int
+    step: int  # 0-based main step
+
+
 class Model:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, parent: Model | None = None) -> None:
         self.name = name
-        self.placements: list[Placement] = []
+        self.parent = parent
+        self.placements: list[Placement] = []  # flattened: own parts and attached copies
         self.num_steps = 0
+        self.subassemblies: dict[str, Model] = {}
+        self.attachments: list[Attachment] = []
         self._current_step: int | None = None
+        self._attached = False
 
     @contextmanager
     def step(self) -> Generator[None]:
@@ -113,28 +140,100 @@ class Model:
     def plate(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
         self._place("plate", size, x=x, y=y, z=z, color=color, rot=rot)
 
+    def subassembly(self, name: str) -> Model:
+        """A part group built separately (own steps, own coordinates), attached later."""
+        if self.parent is not None:
+            raise DesignError(f"subassembly({name!r}): sub-assemblies cannot be nested")
+        if not name or name in self.subassemblies or name == self.name:
+            raise DesignError(f"subassembly({name!r}): name must be unique and non-empty")
+        sub = Model(name, parent=self)
+        self.subassemblies[name] = sub
+        return sub
+
+    def attach(self, sub: Model, *, x: int, y: int, z: int, rot: int = 0) -> None:
+        """Attach a finished sub-assembly: its point (0, 0, 0) lands on (x, y, z), turned by rot.
+
+        The same sub-assembly can be attached several times (e.g. two identical wheels).
+        """
+        call = f"attach({sub.name!r}, x={x!r}, y={y!r}, z={z!r}, rot={rot!r})"
+
+        def fail(reason: str) -> DesignError:
+            return DesignError(f"{call}: {reason}")
+
+        if self._current_step is None:
+            raise fail("attach inside `with m.step():`")
+        if sub.parent is not self:
+            raise fail("not a sub-assembly of this model (create it with m.subassembly)")
+        if sub._current_step is not None or sub.num_steps == 0:
+            raise fail("finish building the sub-assembly (at least one closed step) first")
+        _check_grid(x, y, z, rot, fail)
+        copies = sum(1 for a in self.attachments if a.sub is sub)
+        label = sub.name if copies == 0 else f"{sub.name}#{copies + 1}"
+        step = self._current_step
+        self.attachments.append(Attachment(label, sub, x, y, z, rot, step))
+        for j, p in enumerate(sub.placements):
+            self.placements.append(_moved(p, x, y, z, rot, step, label, j))
+        sub._attached = True
+
     def _place(
         self, kind: str, size: str, *, x: int, y: int, z: int, color: str | int, rot: int
     ) -> None:
         call = f"{kind}({size!r}, x={x!r}, y={y!r}, z={z!r}, color={color!r}, rot={rot!r})"
+        if self.parent is not None:
+            call = f"{self.name}.{call}"
 
         def fail(reason: str) -> DesignError:
             return DesignError(f"{call}: {reason}")
 
         if self._current_step is None:
             raise fail("parts must be placed inside `with m.step():`")
+        if self._attached:
+            raise fail("this sub-assembly is already attached; add all its parts before attaching")
         part = parts.PARTS.get((kind, size))
         if part is None:
             raise fail(f"unknown {kind} size; known: {', '.join(parts.sizes(kind))}")
-        for axis, value in (("x", x), ("y", y), ("z", z)):
-            # bool is an int subclass; reject it explicitly.
-            if not isinstance(value, int) or isinstance(value, bool):
-                raise fail(f"{axis} must be an integer on the grid")
-        if rot not in ROTATIONS:
-            raise fail(f"rot must be one of {ROTATIONS}")
+        _check_grid(x, y, z, rot, fail)
         self.placements.append(
             Placement(part, x, y, z, rot, _color_code(color, fail), self._current_step)
         )
+
+
+def _check_grid(x: int, y: int, z: int, rot: int, fail: Callable[[str], DesignError]) -> None:
+    for axis, value in (("x", x), ("y", y), ("z", z)):
+        # bool is an int subclass; reject it explicitly.
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise fail(f"{axis} must be an integer on the grid")
+    if rot not in ROTATIONS:
+        raise fail(f"rot must be one of {ROTATIONS}")
+
+
+def _moved(
+    p: Placement, x: int, y: int, z: int, rot: int, step: int, label: str, j: int
+) -> Placement:
+    """`p` (in sub-assembly coordinates) turned by `rot` about the origin and moved to (x, y, z).
+
+    Uses the LDraw rotation R(θ) on the footprint centre; doubled coordinates keep it exact.
+    """
+    c = (1, 0, -1, 0)[rot // 90]
+    s = (0, 1, 0, -1)[rot // 90]
+    cx2 = 2 * p.x + p.size_x  # doubled centre
+    cz2 = 2 * p.z + p.size_z
+    wx2 = c * cx2 + s * cz2
+    wz2 = -s * cx2 + c * cz2
+    new_rot = (p.rot + rot) % 360
+    turned = Placement(p.part, 0, 0, 0, new_rot, p.color, step)
+    return Placement(
+        p.part,
+        x + (wx2 - turned.size_x) // 2,
+        y + p.y,
+        z + (wz2 - turned.size_z) // 2,
+        new_rot,
+        p.color,
+        step,
+        sub=label,
+        sub_index=j,
+        sub_step=p.step,
+    )
 
 
 def _color_code(color: str | int, fail: Callable[[str], DesignError]) -> int:

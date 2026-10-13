@@ -28,10 +28,11 @@ def load_program(program: Path) -> Model:
             None,
         )
         raise BuildError(f"{program}:{line}: {e}") from e
-    models = [v for v in namespace.values() if isinstance(v, Model)]
+    models = [v for v in namespace.values() if isinstance(v, Model) and v.parent is None]
     if len(models) != 1:
         raise BuildError(
-            f"{program}: expected exactly one module-level Model, found {len(models)}"
+            f"{program}: expected exactly one module-level Model (sub-assemblies don't count), "
+            f"found {len(models)}"
         )
     model = models[0]
     if model.num_steps == 0:
