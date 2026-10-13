@@ -17,7 +17,18 @@
     #controls input[type=range] { width: min(50vw, 400px); }
     #step-label { white-space: nowrap; }
     #status { position: absolute; top: 16px; left: 16px; font-size: 16px; color: #444; }
-    body.headless #controls, body.headless #status { display: none; }
+    #callout {
+      position: absolute; top: 16px; right: 16px; padding: 12px 16px; border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+      font-size: 18px; line-height: 1.5;
+    }
+    #callout::before { content: "New parts"; display: block; font-weight: 600; }
+    #warning {
+      position: absolute; top: 56px; left: 16px; max-width: 40vw; padding: 10px 14px;
+      border-radius: 10px; background: #fff3e0; color: #8a3b00; font-size: 17px;
+    }
+    body.headless #controls, body.headless #status, body.headless #callout,
+    body.headless #warning { display: none; }
   </style>
   <script type="importmap">
     {
@@ -31,6 +42,8 @@
 <body>
   <div id="viewport"></div>
   <div id="status">Loading…</div>
+  <div id="callout" hidden></div>
+  <div id="warning" hidden>⚠ Hold carefully: the part in the pink box is not well supported yet.</div>
   <div id="controls" hidden>
     <button id="prev" aria-label="Previous step">◀</button>
     <input id="step" type="range" min="1" value="1" aria-label="Building step">

@@ -4,7 +4,7 @@ import runpy
 import traceback
 from pathlib import Path
 
-from lego import ldraw
+from lego import instructions, ldraw
 from lego.dsl import DesignError, Model
 from lego.paths import ROOT
 
@@ -41,13 +41,18 @@ def load_program(program: Path) -> Model:
 
 
 def build(program: Path, out: Path | None = None) -> tuple[Model, Path]:
-    """Run `program` and save its model to `out` (default: out/<program>.mpd)."""
+    """Run `program`; save its model to `out` (default: out/<program>.mpd) plus the preview's
+    instruction data next to it."""
     model = load_program(program)
     target = out or ROOT / "out" / f"{program.stem}.mpd"
     ldraw.save(model, target)
+    instructions.save(model, target)
     return model, target
 
 
 def run(program: Path, out: Path | None) -> None:
     model, target = build(program, out)
-    print(f"{target}: {len(model.placements)} parts, {model.num_steps} steps")
+    print(
+        f"{target}: {len(model.placements)} parts, {model.num_steps} main steps, "
+        f"{instructions.instruction_steps(model)} instruction steps in the preview"
+    )

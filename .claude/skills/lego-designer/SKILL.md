@@ -32,9 +32,10 @@ Run all commands from the repository root. If `ldraw/` is missing, run `uv run l
 6. **Repeat 3–5** until the check passes and the renders match. There is no iteration limit, but
    if the same issue survives three attempts, step back and redesign that section.
 7. **Deliver:** report the program path, the preview command `uv run lego preview
-   out/<slug>.mpd` (don't run it yourself: it starts a server and blocks), part count, step
-   count, the largest step, how many build/check/render iterations it took, and anything you are
-   unsure about.
+   out/<slug>.mpd` (don't run it yourself: it starts a server and blocks), part count, the
+   **instruction step** count (`lego build` prints main steps and instruction steps; the latter
+   is what the kid clicks through), the largest step, the B7 score and any warnings, how many
+   build/check/render iterations it took, and anything you are unsure about.
 
 ## The DSL
 
@@ -100,7 +101,10 @@ with m.step():
 
 - Finish all of a sub-assembly's steps before attaching it; it can't be changed afterwards.
 - In the preview, its steps are shown on their own ("Build 2× the leg") right before the step
-  that attaches it. `lego render --step N` prints the caption of step N.
+  that attaches it ("Attach 2× the leg").
+- `lego render --step N` numbers instruction steps and prints the caption, the new parts, and
+  whether a weak part is marked. In step renders, earlier steps are faded so new parts stand
+  out, and the weakest joint (B7) gets a magenta box.
 - Checks: the sub-assembly's own steps must follow the step rules (one piece after each step,
   ≤ 6 parts, nothing wedged). Attaching it counts as **one** item of the main step, and it must
   connect to what is already built, pressed on as one rigid piece. See the full example in

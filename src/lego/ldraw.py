@@ -44,21 +44,21 @@ def _slug(name: str) -> str:
     return "".join(ch if ch.isalnum() else "_" for ch in name.lower()).strip("_") or "model"
 
 
-def _file_name(model: Model) -> str:
+def file_name(model: Model) -> str:
     if model.parent is not None:
         return f"{_slug(model.parent.name)}__{_slug(model.name)}.ldr"
     return f"{_slug(model.name)}.ldr"
 
 
 def _header(model: Model) -> list[str]:
-    name = _file_name(model)
+    name = file_name(model)
     return [f"0 FILE {name}", f"0 {model.name}", f"0 Name: {name}", "0 Author: lego-designer"]
 
 
 def _attachment_line(a: Attachment) -> str:
     matrix = " ".join(map(str, _matrix(a.rot)))
     x, y, z = a.x * LDU_PER_STUD, -a.y * LDU_PER_PLATE, a.z * LDU_PER_STUD
-    return f"1 16 {x} {y} {z} {matrix} {_file_name(a.sub)}"
+    return f"1 16 {x} {y} {z} {matrix} {file_name(a.sub)}"
 
 
 def dumps(model: Model) -> str:

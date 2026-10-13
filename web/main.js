@@ -108,33 +108,108 @@ function buildSequence(model) {
   return { top, sequence };
 }
 
-function showEntry(top, entry) {
-  for (const t of top) {
-    if (entry.sub) {
-      t.object.visible = t.object === entry.sub;
-    } else {
-      t.object.visible = t.step <= entry.upto;
-    }
+// Instruction data written by `lego build` next to the model: parts per step, weak points.
+async function loadInstructions(url) {
+  try {
+    const response = await fetch(url.replace(/\.(mpd|ldr)$/i, '.json'), { cache: 'no-store' });
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
   }
+}
+
+function stepInfo(info, entry) {
+  if (!info) return null;
+  return (entry.sub ? info.subs?.[entry.sub.name] : info.main)?.[entry.upto] ?? null;
+}
+
+const FADED_OPACITY = 0.3;
+
+// look: 'normal' | 'faded' (built in earlier steps)
+function setLook(object, look) {
+  object.traverse((child) => {
+    if (!child.isMesh && !child.isLine) return;
+    if (!child.userData.ownMaterial) {
+      // Materials are shared between parts of one color; give each object its own copy.
+      child.material = Array.isArray(child.material)
+        ? child.material.map((m) => m.clone())
+        : child.material.clone();
+      child.userData.ownMaterial = true;
+    }
+    for (const m of [child.material].flat()) {
+      m.transparent = look === 'faded';
+      m.opacity = look === 'faded' ? FADED_OPACITY : 1;
+      m.depthWrite = look !== 'faded';
+    }
+  });
+}
+
+// Magenta outline around the weakest joint of a step: a colour no brick has.
+const weakMarker = new THREE.BoxHelper(undefined, 0xff00ff);
+weakMarker.material.depthTest = false;
+weakMarker.renderOrder = 10;
+
+function resolvePath(top, path) {
+  const object = top[path[0]]?.object;
+  return path.length === 1 ? object : object?.children[path[1]];
+}
+
+// Show one instruction step; returns true if a weak part is marked.
+function showEntry(top, entry, isLast, info) {
+  scene.remove(weakMarker);
   if (entry.sub) {
-    for (const i of entry.inner) i.object.visible = i.step <= entry.upto;
-  } else {
-    for (const t of top) {
-      if (isSubassembly(t.object)) for (const c of t.object.children) c.visible = true;
+    for (const t of top) t.object.visible = t.object === entry.sub;
+    for (const i of entry.inner) {
+      i.object.visible = i.step <= entry.upto;
+      if (i.object.visible) setLook(i.object, isLast || i.step === entry.upto ? 'normal' : 'faded');
     }
+    return false;
   }
+  for (const t of top) {
+    t.object.visible = t.step <= entry.upto;
+    if (isSubassembly(t.object)) for (const c of t.object.children) c.visible = true;
+    if (t.object.visible) setLook(t.object, isLast || t.step === entry.upto ? 'normal' : 'faded');
+  }
+  const weakest = (info?.weak ?? [])
+    .filter((w) => w.step === entry.upto && resolvePath(top, w.path)?.visible)
+    .sort((a, b) => a.score - b.score)[0];
+  if (!weakest) return false;
+  const object = resolvePath(top, weakest.path);
+  setLook(object, 'normal');
+  weakMarker.setFromObject(object);
+  scene.add(weakMarker);
+  return true;
 }
 
-function describeEntry(entry, index, total) {
+function describeEntry(entry, index, total, info) {
   const base = `Step ${index} / ${total}`;
-  if (!entry.sub) return base;
-  const times = entry.copies > 1 ? `${entry.copies}× ` : '';
-  return `${base} · Build ${times}the ${entry.name} (${entry.upto + 1}/${entry.count})`;
+  if (entry.sub) {
+    const times = entry.copies > 1 ? `${entry.copies}× ` : '';
+    return `${base} · Build ${times}the ${entry.name} (${entry.upto + 1}/${entry.count})`;
+  }
+  const attach = stepInfo(info, entry)?.attach ?? [];
+  if (!attach.length) return base;
+  const what = attach.map((a) => `${a.count > 1 ? `${a.count}× ` : ''}the ${a.name}`).join(' and ');
+  return `${base} · Attach ${what}`;
 }
 
-function setupStepControls(model, top, sequence, initialStep, direction) {
+function showCallout(info, entry) {
+  const callout = document.getElementById('callout');
+  const parts = stepInfo(info, entry)?.parts ?? [];
+  callout.replaceChildren(
+    ...parts.map((p) => {
+      const row = document.createElement('div');
+      row.textContent = `${p.count}× ${p.part} · ${p.color}`;
+      return row;
+    }),
+  );
+  callout.hidden = parts.length === 0;
+}
+
+function setupStepControls(model, top, sequence, info, initialStep, direction) {
   const slider = document.getElementById('step');
   const label = document.getElementById('step-label');
+  const warning = document.getElementById('warning');
   const total = sequence.length;
   slider.max = String(total);
   let framed = null;
@@ -142,8 +217,9 @@ function setupStepControls(model, top, sequence, initialStep, direction) {
     step = Math.max(1, Math.min(total, step));
     const entry = sequence[step - 1];
     slider.value = String(step);
-    label.textContent = describeEntry(entry, step, total);
-    showEntry(top, entry);
+    label.textContent = describeEntry(entry, step, total, info);
+    warning.hidden = !showEntry(top, entry, step === total, info);
+    showCallout(info, entry);
     const target = entry.sub ?? model;
     if (target !== framed) {
       frameModel(target, direction);
@@ -171,7 +247,7 @@ async function main() {
   await loader.preloadMaterials(LDRAW_LIBRARY + 'LDConfig.ldr');
 
   const started = performance.now();
-  const model = await loader.loadAsync(modelUrl);
+  const [model, info] = await Promise.all([loader.loadAsync(modelUrl), loadInstructions(modelUrl)]);
   model.rotation.x = Math.PI; // LDraw is -Y up
   scene.add(model);
   // Bounding boxes of sub-assemblies need the flipped world matrices before the first render.
@@ -187,16 +263,21 @@ async function main() {
 
   if (headless) {
     const entry = sequence[requested - 1];
-    showEntry(top, entry);
+    const weak = showEntry(top, entry, requested === numSteps, info);
     frameModel(entry.sub ?? model, direction);
     render();
-    window.legoStep = describeEntry(entry, requested, numSteps);
+    const parts = (stepInfo(info, entry)?.parts ?? []).map((p) => `${p.count}× ${p.part} ${p.color}`);
+    window.legoStep = [
+      describeEntry(entry, requested, numSteps, info),
+      parts.length ? `new parts: ${parts.join(', ')}` : '',
+      weak ? 'pink box = part not well supported yet (hold carefully)' : '',
+    ].filter(Boolean).join(' | ');
     window.legoReady = true;
     return;
   }
 
   statusEl.textContent = `Loaded in ${((performance.now() - started) / 1000).toFixed(1)} s`;
-  setupStepControls(model, top, sequence, requested, direction);
+  setupStepControls(model, top, sequence, info, requested, direction);
   renderer.setAnimationLoop(() => {
     controls.update();
     render();
