@@ -103,16 +103,18 @@ skill. `evals/prompts.md` with 10 prompts and a results table.
 
 ### Checkpoint: First loop
 - [x] Claude produces connected, collision-free models from prompts
-- [ ] Review baseline with human before investing in step checks
+- [x] Review baseline with human before investing in step checks
 
 ## Phase 3 — Instruction checks
 
 ### Task 9: B4 step-wise connected and B6 step size
-**Description:** Re-run connectivity after each step (anchor: baseplate if present, else step 1's
-parts). B6: max parts per step (default 6, configurable).
+**Description:** Re-run connectivity after each step. Step 1 may leave several pieces only if all
+its parts lie on the model's bottom layer; from step 2 on, one piece (user decision 2026-10-13).
+Baseplate anchoring waits for baseplate support. B6: max parts per step (default 6, configurable).
 **Acceptance:**
 - [ ] `future_support.py` (part in step 2 only connected via a step-3 part) fails B4 naming part and step
-- [ ] Free-standing model with connected step 1 passes
+- [ ] Loose bottom-layer plates in step 1 pass if step 2 joins them; loose parts above the bottom layer in step 1 fail
+- [ ] Castle-tower-style floor still in 3 pieces after step 2 fails
 - [ ] Step with 7 parts fails B6
 **Verify:** tests per case.
 **Depends on:** 7 · **Files:** `src/lego/check/steps.py`, `tests/test_steps.py`, `models/broken/…` · **Size:** S

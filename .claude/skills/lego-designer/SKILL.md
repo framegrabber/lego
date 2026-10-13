@@ -81,11 +81,16 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
 
 - `with m.step():` opens the next step; steps cannot be nested or empty.
 - Build bottom-up: a part must sit on, or hang under, something placed in the **same or an
-  earlier** step. The parts of step 1 must already hold together on their own (unless you start
-  on a baseplate), and **after every step everything built so far must be one connected piece**:
-  a kid can't hold two loose halves waiting for a later part to join them.
-- Plan the order with that in mind: a base made of plates whose seams line up is several loose
-  pieces until something is stacked across the seams. Stagger the seams of the two base layers.
+  earlier** step. **After every step, everything built so far must be one connected piece** —
+  a kid can't hold two loose halves waiting for a later part to join them. The only exception
+  is step 1: it may lay out several loose parts **on the model's bottom layer** (plates on the
+  table), as long as step 2 joins them.
+- Plan the order with that in mind: a base made of plates whose seams line up stays several
+  loose pieces until something is stacked across the seams. Lay the bottom plates in step 1 and
+  make sure step 2 alone locks all of them together.
+- Within a step, parts are placed in the order your program places them. Each part must be
+  pressable straight down from above (nothing already built above its footprint) or straight
+  up from below (nothing already built below it).
 - Keep steps small: **at most 6 parts** per step, ideally 2–4. Kids follow one step at a time.
 
 ## How parts connect (what the checker tests)
