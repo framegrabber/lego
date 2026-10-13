@@ -42,3 +42,17 @@ likeness 1–3 (1 = unrecognizable, 3 = clearly it). "Self" is the designing age
   the seam where islands meet (robot agent's suggestion).
 - **Not yet enforced, hand-checked by agents:** step size (B6), step-wise connectivity (B4),
   stability (B7). The lighthouse base shows B4 is needed.
+
+### B4–B6 introduction (2026-10-13)
+
+- With B4–B6 enabled, 4 of 5 existing designs failed B4 (robot also B5). All were real:
+  loose base quarters (lighthouse, castle floor), wheels loose in step 1 (racing car), a leg
+  built as a separate tower (robot), ears wedged between earlier parts (robot).
+- Fresh agents fixed each in **one iteration** from the check report + skill, looks unchanged.
+  Counts after: castle 83/21/6, lighthouse 79/19/6, racing car 66/16/6, robot 51/18/6.
+- Their feedback produced: grouped B4 report (each loose piece once, with joining step/part),
+  B5 location = wedged part, B5 hint "same step as the part above", and skill patterns
+  (every top plate overlaps two bottom plates; one leg up, bridge, hang the other leg).
+- Open, needs a decision: B5 counts any earlier part anywhere in the column; physically a part
+  with a gap above or below can be slid in sideways (robot ears). Racing-car agent: step 1 could
+  allow small loose sub-pieces that rest on a bottom-layer part.
