@@ -76,8 +76,8 @@ DSL program. Add `models/wall.py` (multi-step example).
 in `ldraw/parts`, color valid), B2 (occupancy grid; overlapping cells reported with both parts).
 `lego check FILE [--json]`, exit 1 on failure. Fixture models in `models/broken/`.
 **Acceptance:**
-- [ ] Good models pass; `overlap.py` fails B2 naming both part indices and the cell
-- [ ] JSON output is stable and documented in the module docstring
+- [x] Good models pass; `overlap.py` fails B2 naming both part indices and the cell
+- [x] JSON output is stable and documented in the module docstring
 **Verify:** tests per fixture; run `lego check` on good and broken models.
 **Depends on:** 5 · **Files:** `src/lego/check/__init__.py`, `check/report.py`, `check/basic.py`, `src/lego/cli.py`, `tests/test_check_basic.py` · **Size:** M
 
@@ -85,9 +85,9 @@ in `ldraw/parts`, color valid), B2 (occupancy grid; overlapping cells reported w
 **Description:** Build the connection graph (stud cell of A under anti-stud cell of B, B directly on
 top). Report every component not attached to the main one (baseplate or largest component).
 **Acceptance:**
-- [ ] `floating.py` (brick in the air) fails B3 naming the part
-- [ ] Two parts touching only side-by-side are not connected
-- [ ] A brick bridging two towers connects them
+- [x] `floating.py` (brick in the air) fails B3 naming the part
+- [x] Two parts touching only side-by-side are not connected
+- [x] A brick bridging two towers connects them
 **Verify:** tests per case.
 **Depends on:** 6 · **Files:** `src/lego/check/connectivity.py`, `tests/test_connectivity.py`, `models/broken/…` · **Size:** S
 
@@ -96,13 +96,13 @@ top). Report every component not attached to the main one (baseplate or largest 
 render → inspect → fix, until B1–B3 pass and Claude accepts the renders; DSL reference inside the
 skill. `evals/prompts.md` with 10 prompts and a results table.
 **Acceptance:**
-- [ ] 3 eval prompts run end to end; results (pass/fail, iterations, parts, likeness 1–3) recorded
-- [ ] Notes on which report messages Claude misread, with fixes applied
+- [x] 3 eval prompts run end to end; results (pass/fail, iterations, parts, likeness 1–3) recorded
+- [x] Notes on which report messages Claude misread, with fixes applied (none misread; 8 skill gaps fixed)
 **Verify:** run the skill on the 3 prompts; inspect outputs in the preview.
 **Depends on:** 7 · **Files:** `.claude/skills/lego-designer/SKILL.md`, `evals/prompts.md` · **Size:** M
 
 ### Checkpoint: First loop
-- [ ] Claude produces connected, collision-free models from prompts
+- [x] Claude produces connected, collision-free models from prompts
 - [ ] Review baseline with human before investing in step checks
 
 ## Phase 3 — Instruction checks
