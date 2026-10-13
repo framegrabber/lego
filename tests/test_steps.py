@@ -92,5 +92,5 @@ def test_step_with_seven_parts_fails_b6():
         m.plate("1x4", x=3, z=0, y=1, color="red")
     report = step_size(m)
     assert len(report.issues) == 1
-    assert report.issues[0].message == "step 1 adds 7 parts; at most 6 per step"
+    assert report.issues[0].message.startswith("step 1 adds 7 parts; at most 6 per step")
     assert step_size(m, limit=7).ok

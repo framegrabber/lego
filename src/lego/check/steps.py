@@ -1,6 +1,5 @@
 """Instruction checks: B4 step-wise connected, B5 insertable, B6 step size."""
 
-from collections import Counter
 from dataclasses import dataclass, field
 
 from lego.check.connectivity import components, connections
@@ -92,59 +91,94 @@ def steps_connected(model: Model) -> Report:
                 (first.x, first.y, first.z),
             )
         )
-    return report
+    return _also_in_subassemblies(model, report, steps_connected)
 
 
-def step_size(model: Model, limit: int = MAX_PARTS_PER_STEP) -> Report:
-    """B6: each step adds at most `limit` parts."""
-    report = Report("B6", "step size")
-    counts = Counter(p.step for p in model.placements)
-    for step in sorted(counts):
-        if counts[step] > limit:
-            parts = [i for i, p in enumerate(model.placements) if p.step == step]
+def _units(model: Model, step: int) -> list[list[int]]:
+    """Things a kid adds in `step`: each own part, or each attached sub-assembly as a whole."""
+    units: dict[str, list[int]] = {}
+    for i, p in enumerate(model.placements):
+        if p.step == step:
+            units.setdefault(p.sub if p.sub is not None else f"#{i}", []).append(i)
+    return list(units.values())
+
+
+def _also_in_subassemblies(model: Model, report: Report, check) -> Report:
+    """Run `check` on each attached sub-assembly's own steps and add its issues to `report`."""
+    for sub in {a.sub.name: a.sub for a in model.attachments}.values():
+        for issue in check(sub).issues:
             report.issues.append(
                 Issue(
-                    f"step {step + 1} adds {counts[step]} parts; at most {limit} per step",
-                    [PartRef.of(model, i) for i in parts],
+                    f"inside sub-assembly '{sub.name}' (its own steps and coordinates): "
+                    f"{issue.message}",
+                    issue.parts,
+                    issue.at,
                 )
             )
     return report
 
 
+def step_size(model: Model, limit: int = MAX_PARTS_PER_STEP) -> Report:
+    """B6: each step adds at most `limit` things (an attached sub-assembly counts as one)."""
+    report = Report("B6", "step size")
+    for step in range(model.num_steps):
+        units = _units(model, step)
+        if len(units) > limit:
+            report.issues.append(
+                Issue(
+                    f"step {step + 1} adds {len(units)} parts; at most {limit} per step (an "
+                    "attached sub-assembly counts as one)",
+                    [PartRef.of(model, unit[0]) for unit in units],
+                )
+            )
+    return _also_in_subassemblies(model, report, lambda sub: step_size(sub, limit))
+
+
 def insertable(model: Model) -> Report:
-    """B5: no part is wedged between earlier parts touching it from above and below.
+    """B5: nothing is wedged between earlier parts touching it from above and below.
 
     A part touched on top by a part from an earlier step can still be slid in underneath and
     pressed up, and a part touched only from below can be pressed down, as long as there is a
     gap on the other side; parts can be slid into such gaps sideways. Only a part touched by
     earlier parts on both faces cannot be inserted. Parts of the same step never block each
-    other: the kid sees the whole step and picks the order.
+    other: the kid sees the whole step and picks the order. An attached sub-assembly moves as
+    one rigid piece; inside it, its own steps are checked the same way.
     """
     report = Report("B5", "insertable")
     placed: dict[tuple[int, int, int], int] = {}  # parts of earlier steps only
     for step in range(model.num_steps):
-        in_step = [(i, p) for i, p in enumerate(model.placements) if p.step == step]
-        for i, p in in_step:
-            cells = sorted(p.cells())
-            above = _first_blocker(placed, cells, range(p.top, p.top + 1))
-            below = _first_blocker(placed, cells, range(p.y - 1, p.y))
+        units = _units(model, step)
+        for unit in units:
+            above = below = None
+            for i in unit:
+                p = model.placements[i]
+                cells = sorted(p.cells())
+                above = above or _first_blocker(placed, cells, range(p.top, p.top + 1))
+                below = below or _first_blocker(placed, cells, range(p.y - 1, p.y))
             if above and below:
                 (a, _), (b, _) = above, below
+                first = model.placements[unit[0]]
+                what = (
+                    f"sub-assembly '{first.sub}' (attached in step {step + 1})"
+                    if first.sub is not None
+                    else f"part #{unit[0]} (step {step + 1})"
+                )
                 report.issues.append(
                     Issue(
-                        f"part #{i} (step {step + 1}) is wedged in: part #{a} is already above "
-                        f"it and part #{b} already below it, so it can't be pressed on. Put it "
-                        f"in the same step as #{a} (it then goes in before #{a} covers it) or "
-                        f"as #{b}",
-                        [PartRef.of(model, k) for k in (i, a, b)],
-                        (p.x, p.y, p.z),
+                        f"{what} is wedged in: part #{a} is already above it and part #{b} "
+                        f"already below it, so it can't be pressed on. Put it in the same step "
+                        f"as #{a} (it then goes in before #{a} covers it) or as #{b}",
+                        [PartRef.of(model, k) for k in (unit[0], a, b)],
+                        (first.x, first.y, first.z),
                     )
                 )
-        for i, p in in_step:
-            for x, z in p.cells():
-                for y in p.levels():
-                    placed[(x, y, z)] = i
-    return report
+        for unit in units:
+            for i in unit:
+                p = model.placements[i]
+                for x, z in p.cells():
+                    for y in p.levels():
+                        placed[(x, y, z)] = i
+    return _also_in_subassemblies(model, report, insertable)
 
 
 def _first_blocker(

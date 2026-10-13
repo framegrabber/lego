@@ -51,4 +51,6 @@ def test_json_report_shape():
         "index": 1,
         "step": 1,
         "call": "brick('2x4', x=2, y=0, z=0, color='blue', rot=0)",
+        "sub": None,
+        "sub_step": None,
     }
