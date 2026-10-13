@@ -71,6 +71,22 @@ with m.step():
 |---|---|
 | `m.brick(size, x=, y=, z=, color=, rot=0)` | `1x1`, `1x2`, `1x4`, `2x2`, `2x4` |
 | `m.plate(size, x=, y=, z=, color=, rot=0)` | `1x1`, `1x2`, `1x4`, `2x2`, `2x4` |
+| `m.slope(size, x=, y=, z=, color=, facing="front")` | `2x1`, `2x2`, `2x4` |
+| `m.inverted_slope(size, x=, y=, z=, color=, facing="front")` | `2x1`, `2x2` |
+
+Slopes are 45°, brick height (3 levels), always 2 studs deep in the direction they face.
+`facing` is where the sloped face points: `"front"` (−z), `"back"` (+z), `"left"` (−x),
+`"right"` (+x). A `"front"`/`"back"` slope `2xN` covers N studs along x and 2 along z; a
+`"left"`/`"right"` one covers 2 along x and N along z. `(x, z)` is still the footprint's min
+corner.
+
+- **Slope:** full underside (sits on any studs), but **studs only on the row opposite the
+  face**. Nothing can be attached on the sloped face.
+- **Inverted slope:** full studs on top, but only the row opposite the face can sit on studs
+  below; the sloped underside overhangs. Good for noses, wings and roof eaves.
+- The checker treats a slope as its full box: nothing may be placed in the empty space above
+  the sloped face.
+- Example: `models/examples/slopes.py` (all four directions).
 
 Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`, `yellow`,
 `green`, `black`, `white`, `orange`, `lime`, `tan`, `brown`, `light_bluish_grey`,
@@ -168,4 +184,5 @@ with m.step():
   Details on **side faces** (eyes, windows, a chest light, a door) can't be attached sideways
   with these parts: build them into the wall as a differently colored brick in that layer.
 - Symmetry is cheap in code: compute one side and mirror `x`.
-- Without slopes, roofs and noses are stepped: each layer one stud narrower.
+- Roofs, car noses, wing edges: use slopes facing outward; stack a narrower slope row on top
+  for a taller roof. Without enough room, step the layers one stud narrower instead.

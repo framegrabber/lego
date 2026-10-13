@@ -21,13 +21,16 @@ type Cell = tuple[int, int]
 @dataclass(frozen=True)
 class Part:
     ldraw_id: str
-    kind: str  # "brick" | "plate"
+    kind: str  # "brick" | "plate" | "slope" | "inverted_slope"
     size: str  # e.g. "2x4" (DSL name)
     width: int  # studs along x (unrotated)
     depth: int  # studs along z (unrotated)
     height: int  # plates
     studs: frozenset[Cell]  # cells with a stud on top
     antistuds: frozenset[Cell]  # cells that accept a stud from below
+    # LDraw origin relative to the footprint centre along local z (LDU). Slopes have their
+    # origin at the centre of the stud row, half a stud behind the footprint centre.
+    origin_dz: int = 0
 
     @property
     def filename(self) -> str:
@@ -45,6 +48,18 @@ def _block(ldraw_id: str, kind: str, depth: int, width: int) -> Part:
     return Part(ldraw_id, kind, f"{depth}x{width}", width, depth, height, cells, cells)
 
 
+def _slope(ldraw_id: str, kind: str, width: int) -> Part:
+    """45° slopes, two studs deep, brick height. Unrotated, the sloped face points to −z.
+
+    Normal slopes have studs only on the high (back, z=1) row; inverted slopes accept studs
+    from below only on that row. Collision uses the full box (conservative).
+    """
+    full = _rect(width, 2)
+    back_row = frozenset((x, 1) for x in range(width))
+    studs, antistuds = (back_row, full) if kind == "slope" else (full, back_row)
+    return Part(ldraw_id, kind, f"2x{width}", width, 2, 3, studs, antistuds, origin_dz=10)
+
+
 PARTS: dict[tuple[str, str], Part] = {
     (p.kind, p.size): p
     for p in [
@@ -58,6 +73,11 @@ PARTS: dict[tuple[str, str], Part] = {
         _block("3710", "plate", 1, 4),
         _block("3022", "plate", 2, 2),
         _block("3020", "plate", 2, 4),
+        _slope("3040b", "slope", 1),
+        _slope("3039", "slope", 2),
+        _slope("3037", "slope", 4),
+        _slope("3665b", "inverted_slope", 1),
+        _slope("3660b", "inverted_slope", 2),
     ]
 }
 PARTS_BY_ID: dict[str, Part] = {p.ldraw_id: p for p in PARTS.values()}

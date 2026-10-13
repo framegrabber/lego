@@ -2,7 +2,7 @@
 
 from dataclasses import asdict, dataclass, field
 
-from lego.dsl import Model, Placement
+from lego.dsl import FACINGS, Model, Placement
 from lego.parts import colors
 
 
@@ -58,9 +58,11 @@ class Report:
 def describe(p: Placement) -> str:
     names = {code: name for name, code in colors().items()}
     color = names.get(p.color, p.color)
-    return (
-        f"{p.part.kind}({p.part.size!r}, x={p.x}, y={p.y}, z={p.z}, color={color!r}, rot={p.rot})"
-    )
+    if p.part.kind in ("slope", "inverted_slope"):
+        last = f"facing={next(f for f, r in FACINGS.items() if r == p.rot)!r}"
+    else:
+        last = f"rot={p.rot}"
+    return f"{p.part.kind}({p.part.size!r}, x={p.x}, y={p.y}, z={p.z}, color={color!r}, {last})"
 
 
 def to_json(reports: list[Report]) -> dict:

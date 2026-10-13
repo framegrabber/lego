@@ -103,7 +103,8 @@ Axis-aligned parts, rotations in 90° steps:
 
 - Bricks: 1×1 (3005), 1×2 (3004), 1×4 (3010), 2×2 (3003), 2×4 (3001)
 - Plates: 1×1 (3024), 1×2 (3023), 1×4 (3710), 2×2 (3022), 2×4 (3020)
-- Slopes 45°: 2×1 (3040), 2×2 (3039), 2×4 (3037); inverted 2×1 (3665), 2×2 (3660)
+- Slopes 45°: 2×1 (3040b), 2×2 (3039), 2×4 (3037); inverted 2×1 (3665b), 2×2 (3660b) — the
+  current library IDs (3040/3665/3660 are "moved to" aliases)
 - Baseplate (optional): 32×32 (3811)
 
 Every part declares its connection geometry as data in `parts`: footprint, height, stud positions
@@ -112,7 +113,8 @@ Slopes use their full bounding box for collision — conservative, so it may rej
 placement in the empty space above a slope face but never accepts an invalid one. The DSL takes a
 `facing` argument for slopes so Claude does not reason about rotation matrices.
 
-Slopes are added after bricks and plates pass their checker tests (same plan, later task).
+Slopes are implemented (Task 13): stud/anti-stud rows as part data, `facing` in the DSL, LDraw
+origin offset (stud-row centre), visually verified in all four directions.
 
 Extension (after v1 passes the eval set): tiles, round bricks, wheels, SNOT.
 

@@ -31,6 +31,8 @@ from lego import parts
 from lego.parts import Cell, Part
 
 ROTATIONS = (0, 90, 180, 270)
+# Slope face direction → rotation (the unrotated slope faces −z, "front"; see ldraw.R(θ)).
+FACINGS = {"front": 0, "left": 90, "back": 180, "right": 270}
 
 
 class DesignError(ValueError):
@@ -140,6 +142,30 @@ class Model:
     def plate(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
         self._place("plate", size, x=x, y=y, z=z, color=color, rot=rot)
 
+    def slope(
+        self, size: str, *, x: int, y: int, z: int, color: str | int, facing: str = "front"
+    ) -> None:
+        """45° slope, 2 studs deep ("2x1", "2x2", "2x4"); `facing` is where the sloped face
+        points: "front" (−z), "back" (+z), "left" (−x), "right" (+x). Studs only on the row
+        opposite the face."""
+        self._place_slope("slope", size, x=x, y=y, z=z, color=color, facing=facing)
+
+    def inverted_slope(
+        self, size: str, *, x: int, y: int, z: int, color: str | int, facing: str = "front"
+    ) -> None:
+        """Upside-down 45° slope ("2x1", "2x2"): full studs on top, sloped underside points to
+        `facing`; only the row opposite the face can sit on studs below."""
+        self._place_slope("inverted_slope", size, x=x, y=y, z=z, color=color, facing=facing)
+
+    def _place_slope(
+        self, kind: str, size: str, *, x: int, y: int, z: int, color: str | int, facing: str
+    ) -> None:
+        shown = f"facing={facing!r}"
+        if facing not in FACINGS:
+            call = f"{kind}({size!r}, x={x!r}, y={y!r}, z={z!r}, color={color!r}, {shown})"
+            raise DesignError(f"{call}: facing must be one of {', '.join(FACINGS)}")
+        self._place(kind, size, x=x, y=y, z=z, color=color, rot=FACINGS[facing], shown=shown)
+
     def subassembly(self, name: str) -> Model:
         """A part group built separately (own steps, own coordinates), attached later."""
         if self.parent is not None:
@@ -176,9 +202,19 @@ class Model:
         sub._attached = True
 
     def _place(
-        self, kind: str, size: str, *, x: int, y: int, z: int, color: str | int, rot: int
+        self,
+        kind: str,
+        size: str,
+        *,
+        x: int,
+        y: int,
+        z: int,
+        color: str | int,
+        rot: int,
+        shown: str | None = None,
     ) -> None:
-        call = f"{kind}({size!r}, x={x!r}, y={y!r}, z={z!r}, color={color!r}, rot={rot!r})"
+        last = shown if shown is not None else f"rot={rot!r}"
+        call = f"{kind}({size!r}, x={x!r}, y={y!r}, z={z!r}, color={color!r}, {last})"
         if self.parent is not None:
             call = f"{self.name}.{call}"
 

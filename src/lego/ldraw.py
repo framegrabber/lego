@@ -10,7 +10,7 @@ import math
 from collections.abc import Callable
 from pathlib import Path
 
-from lego.dsl import ROTATIONS, Attachment, DesignError, Model, Placement
+from lego.dsl import FACINGS, ROTATIONS, Attachment, DesignError, Model, Placement
 from lego.parts import LDU_PER_PLATE, LDU_PER_STUD, PARTS_BY_ID
 
 type Matrix = tuple[int, ...]
@@ -30,11 +30,19 @@ def _matrix(rot: int) -> Matrix:
 
 
 _ROT_BY_MATRIX: dict[Matrix, int] = {_matrix(r): r for r in ROTATIONS}
+_FACING_BY_ROT = {rot: facing for facing, rot in FACINGS.items()}
+
+
+def _origin_offset(dz: int, rot: int) -> tuple[int, int]:
+    """R(rot) · (0, 0, dz): where the part's LDraw origin sits relative to its footprint centre."""
+    r = _matrix(rot)
+    return r[2] * dz, r[8] * dz
 
 
 def _line(p: Placement) -> str:
-    x = p.x * LDU_PER_STUD + p.size_x * _HALF_STUD
-    z = p.z * LDU_PER_STUD + p.size_z * _HALF_STUD
+    ox, oz = _origin_offset(p.part.origin_dz, p.rot)
+    x = p.x * LDU_PER_STUD + p.size_x * _HALF_STUD + ox
+    z = p.z * LDU_PER_STUD + p.size_z * _HALF_STUD + oz
     y = -(p.y + p.part.height) * LDU_PER_PLATE
     matrix = " ".join(map(str, _matrix(p.rot)))
     return f"1 {p.color} {x} {y} {z} {matrix} {p.part.filename}"
@@ -144,6 +152,8 @@ def _parse_part_line(tokens: list[str], lineno: int) -> tuple[str, dict[str, int
         raise fail(f"malformed number: {e}") from e
     rot = _rotation(tokens, fail)
     size_x, size_z = (part.depth, part.width) if rot in (90, 270) else (part.width, part.depth)
+    ox, oz = _origin_offset(part.origin_dz, rot)
+    x_ldu, z_ldu = x_ldu - ox, z_ldu - oz
     x = _grid(x_ldu - size_x * _HALF_STUD, LDU_PER_STUD, f"{part.filename} x position", fail)
     z = _grid(z_ldu - size_z * _HALF_STUD, LDU_PER_STUD, f"{part.filename} z position", fail)
     y = _grid(-y_ldu, LDU_PER_PLATE, f"{part.filename} height", fail) - part.height
@@ -197,6 +207,8 @@ def _fill(model: Model, section: _Section, subs: dict[str, Model]) -> None:
                         continue
                     kind, kwargs = _parse_part_line(tokens, lineno)
                     size = str(kwargs.pop("size"))
+                    if kind in ("slope", "inverted_slope"):
+                        kwargs["facing"] = _FACING_BY_ROT[int(kwargs.pop("rot"))]
                     getattr(model, kind)(size, **kwargs)
                 except DesignError as e:
                     raise LDrawError(f"line {lineno}: {e}") from e
