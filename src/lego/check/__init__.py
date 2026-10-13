@@ -5,9 +5,16 @@ from collections.abc import Callable
 from lego.check.basic import collisions, valid_parts
 from lego.check.connectivity import connected
 from lego.check.report import Issue, PartRef, Report, to_json, to_text
+from lego.check.steps import step_size, steps_connected
 from lego.dsl import Model
 
-CHECKS: list[Callable[[Model], Report]] = [valid_parts, collisions, connected]
+CHECKS: list[Callable[[Model], Report]] = [
+    valid_parts,
+    collisions,
+    connected,
+    steps_connected,
+    step_size,
+]
 
 
 def run_all(model: Model) -> list[Report]:
