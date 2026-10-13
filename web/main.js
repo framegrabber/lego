@@ -64,22 +64,91 @@ function frameModel(model, direction) {
   controls.update();
 }
 
-function showStep(model, step) {
-  // LDrawLoader numbers steps from 0; the UI and URL use 1-based steps.
-  model.traverse((c) => {
-    if (c.isGroup) c.visible = c.userData.buildingStep <= step - 1;
+// Children of a group, each tagged with its step number: LDrawLoader flags the first object after
+// every `0 STEP` line with userData.startingBuildingStep.
+function numberSteps(group) {
+  let step = 0;
+  return group.children.map((child) => {
+    if (child.userData.startingBuildingStep) step++;
+    return { object: child, step };
   });
 }
 
-function setupStepControls(model, numSteps, initialStep) {
+// Sub-assemblies are submodels (.ldr); library parts are .dat files.
+const isSubassembly = (object) => object.name.toLowerCase().endsWith('.ldr');
+
+function subassemblyName(object) {
+  const stem = object.name.replace(/\.ldr$/i, '');
+  return stem.slice(stem.indexOf('__') + 2).replace(/_/g, ' ');
+}
+
+// The instruction sequence: before each main step, the steps of every sub-assembly it attaches
+// (shown on their own, once per kind with a "2×" count for copies), then the main step itself.
+function buildSequence(model) {
+  const top = numberSteps(model);
+  const mainSteps = Math.max(0, ...top.map((t) => t.step)) + 1;
+  const sequence = [];
+  for (let s = 0; s < mainSteps; s++) {
+    const kinds = new Map(); // submodel file -> first copy and number of copies in this step
+    for (const t of top) {
+      if (t.step !== s || !isSubassembly(t.object)) continue;
+      const kind = kinds.get(t.object.name);
+      if (kind) kind.copies++;
+      else kinds.set(t.object.name, { object: t.object, copies: 1 });
+    }
+    for (const { object, copies } of kinds.values()) {
+      const inner = numberSteps(object);
+      const count = Math.max(0, ...inner.map((i) => i.step)) + 1;
+      for (let k = 0; k < count; k++) {
+        sequence.push({ sub: object, inner, upto: k, count, copies, name: subassemblyName(object) });
+      }
+    }
+    sequence.push({ sub: null, upto: s });
+  }
+  return { top, sequence };
+}
+
+function showEntry(top, entry) {
+  for (const t of top) {
+    if (entry.sub) {
+      t.object.visible = t.object === entry.sub;
+    } else {
+      t.object.visible = t.step <= entry.upto;
+    }
+  }
+  if (entry.sub) {
+    for (const i of entry.inner) i.object.visible = i.step <= entry.upto;
+  } else {
+    for (const t of top) {
+      if (isSubassembly(t.object)) for (const c of t.object.children) c.visible = true;
+    }
+  }
+}
+
+function describeEntry(entry, index, total) {
+  const base = `Step ${index} / ${total}`;
+  if (!entry.sub) return base;
+  const times = entry.copies > 1 ? `${entry.copies}× ` : '';
+  return `${base} · Build ${times}the ${entry.name} (${entry.upto + 1}/${entry.count})`;
+}
+
+function setupStepControls(model, top, sequence, initialStep, direction) {
   const slider = document.getElementById('step');
   const label = document.getElementById('step-label');
-  slider.max = String(numSteps);
+  const total = sequence.length;
+  slider.max = String(total);
+  let framed = null;
   const go = (step) => {
-    step = Math.max(1, Math.min(numSteps, step));
+    step = Math.max(1, Math.min(total, step));
+    const entry = sequence[step - 1];
     slider.value = String(step);
-    label.textContent = `Step ${step} / ${numSteps}`;
-    showStep(model, step);
+    label.textContent = describeEntry(entry, step, total);
+    showEntry(top, entry);
+    const target = entry.sub ?? model;
+    if (target !== framed) {
+      frameModel(target, direction);
+      framed = target;
+    }
   };
   slider.addEventListener('input', () => go(Number(slider.value)));
   document.getElementById('prev').addEventListener('click', () => go(Number(slider.value) - 1));
@@ -105,25 +174,29 @@ async function main() {
   const model = await loader.loadAsync(modelUrl);
   model.rotation.x = Math.PI; // LDraw is -Y up
   scene.add(model);
+  // Bounding boxes of sub-assemblies need the flipped world matrices before the first render.
+  model.updateMatrixWorld(true);
 
-  const numSteps = model.userData.numBuildingSteps;
+  const { top, sequence } = buildSequence(model);
+  const numSteps = sequence.length;
   const requested = params.has('step') ? Number(params.get('step')) : numSteps;
   if (!Number.isInteger(requested) || requested < 1 || requested > numSteps) {
     throw new Error(`step must be 1..${numSteps}, got "${params.get('step')}"`);
   }
-
-  // Frame the finished model so the camera stays put while stepping.
-  frameModel(model, VIEWS[viewName ?? 'iso']);
+  const direction = VIEWS[viewName ?? 'iso'];
 
   if (headless) {
-    showStep(model, requested);
+    const entry = sequence[requested - 1];
+    showEntry(top, entry);
+    frameModel(entry.sub ?? model, direction);
     render();
+    window.legoStep = describeEntry(entry, requested, numSteps);
     window.legoReady = true;
     return;
   }
 
   statusEl.textContent = `Loaded in ${((performance.now() - started) / 1000).toFixed(1)} s`;
-  setupStepControls(model, numSteps, requested);
+  setupStepControls(model, top, sequence, requested, direction);
   renderer.setAnimationLoop(() => {
     controls.update();
     render();

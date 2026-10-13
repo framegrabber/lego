@@ -16,11 +16,15 @@ class RenderError(Exception):
     pass
 
 
-def render(model: Path, out_dir: Path, step: int | None = None) -> list[Path]:
-    """Render all VIEWS of `model` (optionally only up to `step`) into `out_dir`."""
+def render(model: Path, out_dir: Path, step: int | None = None) -> tuple[list[Path], str]:
+    """Render all VIEWS of `model` (optionally at instruction `step`) into `out_dir`.
+
+    Returns the written files and the step caption (e.g. "Step 3 / 12 · Build the leg (1/2)").
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = f"-step{step}" if step is not None else ""
     written: list[Path] = []
+    caption = ""
     with preview.serve(model) as url, sync_playwright() as p:
         try:
             browser = p.chromium.launch()
@@ -40,14 +44,17 @@ def render(model: Path, out_dir: Path, step: int | None = None) -> list[Path]:
                 error = page.evaluate("window.legoError")
                 if error:
                     raise RenderError(f"{view}: {error}")
+                caption = page.evaluate("window.legoStep")
                 target = out_dir / f"{model.stem}-{view}{suffix}.png"
                 page.screenshot(path=str(target))
                 written.append(target)
         finally:
             browser.close()
-    return written
+    return written, caption
 
 
 def run(model: Path, out_dir: Path, step: int | None) -> None:
-    for path in render(model, out_dir, step):
+    paths, caption = render(model, out_dir, step)
+    for path in paths:
         print(path)
+    print(caption)
