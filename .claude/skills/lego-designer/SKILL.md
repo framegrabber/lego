@@ -87,7 +87,8 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
   table), as long as step 2 joins them.
 - Plan the order with that in mind: a base made of plates whose seams line up stays several
   loose pieces until something is stacked across the seams. Lay the bottom plates in step 1 and
-  make sure step 2 alone locks all of them together.
+  make sure step 2 locks all of them together. A base needing more than 6 bottom plates: put
+  the rest in a later step and press them up from below under the top layer already built.
 - Each part must be pressable straight down from above (nothing from an **earlier step** above
   its footprint) or straight up from below (nothing from an earlier step below it). Within a
   step the kid chooses the order, so parts of the same step never block each other.
@@ -102,10 +103,12 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
   at least one stud. **Parts side by side are NOT connected**, even when touching. To join two
   neighbors, put a part across them on the layer above or below.
 - **B4 step-wise connected**: after every step, everything built so far is one piece (step 1
-  may leave loose parts on the bottom layer only). The issue lists the parts not yet joined.
-- **B5 insertable**: no part is wedged between parts from earlier steps above and below it. Fix
-  by moving the wedged part to an earlier step than the part above it, or the part above to a
-  later step.
+  may leave loose parts on the bottom layer only). Each loose piece is reported once, with the
+  step and part that finally join it: move that joining part (or another bridge) into the step
+  where the piece appears. **Fix the earliest B4 issue first**; later ones often follow from it.
+- **B5 insertable**: no part is wedged between parts from earlier steps above and below it. The
+  usual fix: put the wedged part in the **same step** as the part above it (a part hanging
+  under something goes in the same step as that thing).
 - **B6 step size**: at most 6 parts per step.
 - **Stability is not checked yet**: overlap joints like a brick wall, avoid parts held by a
   single stud that carry weight, overhang at most 2 studs past the support, and hold every
@@ -115,7 +118,11 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
 
 ## Design tips
 
-- Start with a plate layer as a foundation, plus a second layer with seams offset from the first.
+- Two plate layers only lock together if **every top plate overlaps at least two bottom
+  plates**. A plate sitting exactly on a same-sized plate is always a separate island. If the
+  plates can't tie a base together on their own, put the first body bricks in the same steps.
+- Two legs (or towers) can't be built side by side and joined later. Build one leg up, add a
+  part that spans both leg positions, then hang the second leg underneath it.
 - Alternate the direction of joints between layers so each layer locks the one below.
 - **Watch for seams that line up through every layer.** Bricks stacked so their joints fall at
   the same x (or z) on every layer form separate towers that only touch side by side. Every

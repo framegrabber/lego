@@ -15,7 +15,7 @@ def test_brick_wedged_under_an_existing_overhang_fails():
     [issue] = insertable(load_program(MODELS / "broken" / "wedged.py")).issues
     # The wedged part, then what is above it, then what is below it.
     assert [p.index for p in issue.parts] == [3, 2, 0]
-    assert issue.at == (2, 6, 0)
+    assert issue.at == (2, 3, 0)  # the wedged part itself
 
 
 def test_same_parts_in_buildable_order_pass():
