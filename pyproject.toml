@@ -36,3 +36,6 @@ select = ["E", "F", "I", "UP", "B"]
 typeCheckingMode = "standard"
 venvPath = "."
 venv = ".venv"
+
+[tool.pytest.ini_options]
+markers = ["ldraw: needs the LDraw parts library (skipped if missing)"]
