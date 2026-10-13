@@ -1,4 +1,4 @@
-"""Instruction checks: B4 step-wise connected, B6 step size."""
+"""Instruction checks: B4 step-wise connected, B5 insertable, B6 step size."""
 
 from collections import Counter
 
@@ -65,3 +65,53 @@ def step_size(model: Model, limit: int = MAX_PARTS_PER_STEP) -> Report:
                 )
             )
     return report
+
+
+def insertable(model: Model) -> Report:
+    """B5: every part can be pressed on straight down or straight up.
+
+    A part is insertable if the column above its footprint holds no part from an earlier step
+    (press down) or the column below does not (press up from underneath). Parts of the same step
+    never block each other: the kid sees the whole step and picks the order. A part wedged
+    between earlier parts above and below cannot be inserted.
+    """
+    report = Report("B5", "insertable")
+    if not model.placements:
+        return report
+    lowest = min(p.y for p in model.placements)
+    highest = max(p.top for p in model.placements)
+    placed: dict[tuple[int, int, int], int] = {}  # parts of earlier steps only
+    for step in range(model.num_steps):
+        in_step = [(i, p) for i, p in enumerate(model.placements) if p.step == step]
+        for i, p in in_step:
+            cells = sorted(p.cells())
+            above = _first_blocker(placed, cells, range(p.top, highest))
+            below = _first_blocker(placed, cells, range(p.y - 1, lowest - 1, -1))
+            if above and below:
+                (a, at), (b, _) = above, below
+                report.issues.append(
+                    Issue(
+                        f"part #{i} (step {step + 1}) is wedged in: part #{a} is already above "
+                        f"it and part #{b} already below it, so it can't be pressed on; add it "
+                        "in an earlier step than one of them",
+                        [PartRef.of(model, k) for k in (i, a, b)],
+                        at,
+                    )
+                )
+        for i, p in in_step:
+            for x, z in p.cells():
+                for y in p.levels():
+                    placed[(x, y, z)] = i
+    return report
+
+
+def _first_blocker(
+    placed: dict[tuple[int, int, int], int], cells: list[tuple[int, int]], levels: range
+) -> tuple[int, tuple[int, int, int]] | None:
+    """First placed part met when sweeping `levels` (nearest first) over the footprint."""
+    for y in levels:
+        for x, z in cells:
+            j = placed.get((x, y, z))
+            if j is not None:
+                return j, (x, y, z)
+    return None

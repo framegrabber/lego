@@ -88,9 +88,9 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
 - Plan the order with that in mind: a base made of plates whose seams line up stays several
   loose pieces until something is stacked across the seams. Lay the bottom plates in step 1 and
   make sure step 2 alone locks all of them together.
-- Within a step, parts are placed in the order your program places them. Each part must be
-  pressable straight down from above (nothing already built above its footprint) or straight
-  up from below (nothing already built below it).
+- Each part must be pressable straight down from above (nothing from an **earlier step** above
+  its footprint) or straight up from below (nothing from an earlier step below it). Within a
+  step the kid chooses the order, so parts of the same step never block each other.
 - Keep steps small: **at most 6 parts** per step, ideally 2–4. Kids follow one step at a time.
 
 ## How parts connect (what the checker tests)
@@ -101,10 +101,17 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
   when B's bottom level equals A's top level (`A.y + height`) **and** their footprints overlap by
   at least one stud. **Parts side by side are NOT connected**, even when touching. To join two
   neighbors, put a part across them on the layer above or below.
-- More checks (step order, insertability, stability) are coming; design for them already:
-  overlap joints like a brick wall (running bond), avoid parts held by a single stud that carry
-  weight, and keep overhangs short: until the stability check exists, overhang at most 2 studs
-  past the support and hold every overhanging part by at least 2 studs.
+- **B4 step-wise connected**: after every step, everything built so far is one piece (step 1
+  may leave loose parts on the bottom layer only). The issue lists the parts not yet joined.
+- **B5 insertable**: no part is wedged between parts from earlier steps above and below it. Fix
+  by moving the wedged part to an earlier step than the part above it, or the part above to a
+  later step.
+- **B6 step size**: at most 6 parts per step.
+- **Stability is not checked yet**: overlap joints like a brick wall, avoid parts held by a
+  single stud that carry weight, overhang at most 2 studs past the support, and hold every
+  overhanging part by at least 2 studs.
+- **No sub-assemblies yet**: everything is built as one growing piece. Build legs, arms or
+  wings outward from the body instead of as separate pieces joined later.
 
 ## Design tips
 

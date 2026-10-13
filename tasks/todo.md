@@ -112,10 +112,10 @@ skill. `evals/prompts.md` with 10 prompts and a results table.
 its parts lie on the model's bottom layer; from step 2 on, one piece (user decision 2026-10-13).
 Baseplate anchoring waits for baseplate support. B6: max parts per step (default 6, configurable).
 **Acceptance:**
-- [ ] `future_support.py` (part in step 2 only connected via a step-3 part) fails B4 naming part and step
-- [ ] Loose bottom-layer plates in step 1 pass if step 2 joins them; loose parts above the bottom layer in step 1 fail
-- [ ] Castle-tower-style floor still in 3 pieces after step 2 fails
-- [ ] Step with 7 parts fails B6
+- [x] `future_support.py` (part in step 2 only connected via a step-3 part) fails B4 naming part and step
+- [x] Loose bottom-layer plates in step 1 pass if step 2 joins them; loose parts above the bottom layer in step 1 fail
+- [x] Castle-tower-style floor still in 3 pieces after step 2 fails
+- [x] Step with 7 parts fails B6
 **Verify:** tests per case.
 **Depends on:** 7 · **Files:** `src/lego/check/steps.py`, `tests/test_steps.py`, `models/broken/…` · **Size:** S
 
@@ -124,9 +124,9 @@ Baseplate anchoring waits for baseplate support. B6: max parts per step (default
 cells above (if it connects downward) or below (if it connects upward) its footprint must be free
 of already-placed parts.
 **Acceptance:**
-- [ ] `blocked.py` (brick inserted under an existing overhang from above) fails B5
-- [ ] Underside attachment from below with free space passes
-- [ ] Skill updated to run B4–B6
+- [x] `wedged.py` (brick inserted under an existing overhang) fails B5
+- [x] Underside attachment from below with free space passes
+- [x] Skill updated to run B4–B6 (plus: parts of one step never block each other)
 **Verify:** tests; re-run 3 eval prompts.
 **Depends on:** 9 · **Files:** `src/lego/check/steps.py`, `tests/test_steps.py`, `.claude/skills/lego-designer/SKILL.md` · **Size:** S
 
