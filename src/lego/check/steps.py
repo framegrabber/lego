@@ -112,25 +112,22 @@ def step_size(model: Model, limit: int = MAX_PARTS_PER_STEP) -> Report:
 
 
 def insertable(model: Model) -> Report:
-    """B5: every part can be pressed on straight down or straight up.
+    """B5: no part is wedged between earlier parts touching it from above and below.
 
-    A part is insertable if the column above its footprint holds no part from an earlier step
-    (press down) or the column below does not (press up from underneath). Parts of the same step
-    never block each other: the kid sees the whole step and picks the order. A part wedged
-    between earlier parts above and below cannot be inserted.
+    A part touched on top by a part from an earlier step can still be slid in underneath and
+    pressed up, and a part touched only from below can be pressed down, as long as there is a
+    gap on the other side; parts can be slid into such gaps sideways. Only a part touched by
+    earlier parts on both faces cannot be inserted. Parts of the same step never block each
+    other: the kid sees the whole step and picks the order.
     """
     report = Report("B5", "insertable")
-    if not model.placements:
-        return report
-    lowest = min(p.y for p in model.placements)
-    highest = max(p.top for p in model.placements)
     placed: dict[tuple[int, int, int], int] = {}  # parts of earlier steps only
     for step in range(model.num_steps):
         in_step = [(i, p) for i, p in enumerate(model.placements) if p.step == step]
         for i, p in in_step:
             cells = sorted(p.cells())
-            above = _first_blocker(placed, cells, range(p.top, highest))
-            below = _first_blocker(placed, cells, range(p.y - 1, lowest - 1, -1))
+            above = _first_blocker(placed, cells, range(p.top, p.top + 1))
+            below = _first_blocker(placed, cells, range(p.y - 1, p.y))
             if above and below:
                 (a, _), (b, _) = above, below
                 report.issues.append(

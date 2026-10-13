@@ -34,7 +34,7 @@ Claude can fix them.
 | B2 | No collisions | No two parts occupy the same volume (occupancy grid at 1 stud × 1 plate height). |
 | B3 | Connected | The stud/anti-stud connection graph of the finished model is a single component. |
 | B4 | Step-wise connected | After every step, all placed parts form one connected component. **Only exception: step 1 may leave several loose pieces if every step-1 part lies on the model's bottom layer** (plates laid out on the table, as in real instructions); from step 2 on, everything built so far is one piece. Free-standing models are supported; baseplate anchoring comes with baseplate support. |
-| B5 | Step-wise insertable | Every part can be pressed onto its connections vertically — from above (no part from an earlier step in the column above its footprint) or from below for underside attachment (none in the column below) — without passing through already-placed parts. Parts of the same step never block each other: the kid sees the whole step and chooses the order. |
+| B5 | Step-wise insertable | No part is wedged: a part fails only if parts from earlier steps **touch** it both on top and underneath. A part with a gap above or below can be slid in sideways and pressed on (user decision 2026-10-13; misses the rare fully enclosed cavity). Parts of the same step never block each other: the kid sees the whole step and chooses the order. |
 | B6 | Step size | Each step adds at most 6 parts (configurable); sub-builds are allowed and are checked the same way. |
 | B7 | Stable (graded) | Stability score per part and per step in [0, 1]; see below. |
 

@@ -89,9 +89,10 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
   loose pieces until something is stacked across the seams. Lay the bottom plates in step 1 and
   make sure step 2 locks all of them together. A base needing more than 6 bottom plates: put
   the rest in a later step and press them up from below under the top layer already built.
-- Each part must be pressable straight down from above (nothing from an **earlier step** above
-  its footprint) or straight up from below (nothing from an earlier step below it). Within a
-  step the kid chooses the order, so parts of the same step never block each other.
+- A part can't be added if parts from **earlier steps** already touch both its top and its
+  bottom: there is no room to press it on. With a gap on either side it can be slid in and
+  pressed. Within a step the kid chooses the order, so parts of the same step never block
+  each other.
 - Keep steps small: **at most 6 parts** per step, ideally 2–4. Kids follow one step at a time.
 
 ## How parts connect (what the checker tests)
@@ -106,7 +107,7 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
   may leave loose parts on the bottom layer only). Each loose piece is reported once, with the
   step and part that finally join it: move that joining part (or another bridge) into the step
   where the piece appears. **Fix the earliest B4 issue first**; later ones often follow from it.
-- **B5 insertable**: no part is wedged between parts from earlier steps above and below it. The
+- **B5 insertable**: no part is touched by parts from earlier steps both above and below. The
   usual fix: put the wedged part in the **same step** as the part above it (a part hanging
   under something goes in the same step as that thing).
 - **B6 step size**: at most 6 parts per step.

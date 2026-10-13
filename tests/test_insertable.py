@@ -59,16 +59,23 @@ def test_bottom_plate_added_under_an_existing_part_passes():
     assert insertable(m).ok
 
 
-def test_blocker_far_above_still_blocks_pressing_down():
+def test_part_with_a_gap_above_can_be_slid_in_and_pressed_down():
+    # Robot ears: something is far above, but there is room to slide the part in sideways.
     m = Model("t")
     with m.step():
-        m.brick("1x1", x=0, z=0, y=0, color="red")
-        m.brick("1x2", x=1, z=0, y=0, color="red")
-        m.brick("1x4", x=0, z=0, y=3, color="red")
-        m.brick("1x1", x=4, z=0, y=0, color="red")  # free column: fine
+        m.brick("1x4", x=0, z=0, y=0, color="red")
+        m.plate("1x1", x=0, z=0, y=9, color="blue")  # far above x=0 (floating; B5 ignores that)
     with m.step():
-        m.plate("1x1", x=0, z=0, y=9, color="blue")  # far above x=0, nothing between yet
+        m.plate("1x1", x=0, z=0, y=3, color="green")  # gap of 5 levels above it
+    assert insertable(m).ok
+
+
+def test_part_with_exactly_its_height_of_room_is_wedged():
+    m = Model("t")
     with m.step():
-        m.plate("1x1", x=0, z=0, y=6, color="green")  # x=0: blue above, 1x4 below
+        m.brick("1x4", x=0, z=0, y=0, color="red")
+        m.plate("1x4", x=0, z=0, y=4, color="blue")  # leaves exactly one plate of room at y=3
+    with m.step():
+        m.plate("1x1", x=1, z=0, y=3, color="green")
     [issue] = insertable(m).issues
-    assert [p.index for p in issue.parts] == [5, 4, 2]
+    assert [p.index for p in issue.parts] == [2, 1, 0]
