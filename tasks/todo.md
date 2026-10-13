@@ -131,7 +131,15 @@ of already-placed parts.
 **Depends on:** 9 · **Files:** `src/lego/check/steps.py`, `tests/test_steps.py`, `.claude/skills/lego-designer/SKILL.md` · **Size:** S
 
 ### Checkpoint: Instructions
-- [ ] Eval prompts pass B1–B6; human steps through one model in the preview
+- [x] Eval prompts pass B1–B6 (4 designs fixed by fresh agents, 1 iteration each)
+- [ ] Human steps through one model in the preview
+
+## Phase 3b — Sub-assemblies (user decision: before stability)
+
+- [x] DSL `subassembly()` / `attach()` with flattened placements; MPD submodels; round trip
+- [x] B4/B5/B6 inside each sub-assembly; attachment = one rigid item in its main step
+- [x] Preview shows sub-assembly steps on their own ("Build 2× the leg") before "Attach 2× the leg"
+- [x] Robot redesigned with leg/arm sub-assemblies by a fresh agent (1 iteration)
 
 ## Phase 4 — Stability
 
@@ -140,9 +148,11 @@ of already-placed parts.
 evaluated after every step; tipping term for free-standing models; `warn`/`fail` thresholds
 (0.6 / 0.3) configurable; verdict ok/fragile/unstable in the report.
 **Acceptance:**
-- [ ] Single 1×1-stud cantilever carrying a tower scores < 0.3
-- [ ] Solid wall scores ≥ 0.6
-- [ ] Free-standing model with centre of mass outside its footprint is unstable
+- [x] Single 1×1-stud cantilever carrying a tower scores < 0.3
+- [x] Solid wall scores ≥ 0.6
+- [x] Free-standing model with centre of mass outside its footprint is unstable
+- [x] Decision (pending review): weak points only while building are warnings; tipping only for
+  the finished model
 **Verify:** tests per case; scores of eval models look plausible.
 **Depends on:** 9 · **Files:** `src/lego/check/stability.py`, `tests/test_stability.py`, `models/broken/…` · **Size:** M
 
@@ -151,7 +161,8 @@ evaluated after every step; tipping term for free-standing models; `warn`/`fail`
 parts with a "hold carefully" marker at their step. Skill blocks on unstable, tries to improve
 fragile.
 **Acceptance:**
-- [ ] Fragile fixture shows highlighted parts at the right step
+- [x] Weakest joint per step marked with a magenta box and a "hold carefully" banner; also:
+  earlier steps faded, new-parts callout per step, attach captions
 **Verify:** visual check in browser.
 **Depends on:** 11 · **Files:** `src/lego/cli.py`, `web/main.js`, `.claude/skills/lego-designer/SKILL.md` · **Size:** S
 
@@ -162,9 +173,9 @@ fragile.
 bounding-box occupancy; `m.slope("2x2", facing="north", …)` in the DSL; all checks use the part
 data, no slope special cases in check code.
 **Acceptance:**
-- [ ] Nothing connects on a slope's sloped face; a brick on the back row connects
-- [ ] Inverted slope connects only via its back-row anti-studs
-- [ ] `facing` maps to the correct LDraw rotation (visually verified for all 4 directions)
+- [x] Nothing connects on a slope's sloped face; a brick on the back row connects
+- [x] Inverted slope connects only via its back-row anti-studs
+- [x] `facing` maps to the correct LDraw rotation (visually verified for all 4 directions)
 **Verify:** tests; render a slope test model.
 **Depends on:** 10, 11 · **Files:** `src/lego/parts.py`, `src/lego/dsl.py`, `tests/test_slopes.py`, `models/slopes.py`, `.claude/skills/lego-designer/SKILL.md` · **Size:** M
 
