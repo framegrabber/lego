@@ -62,8 +62,10 @@ with m.step():
   min corner. `rot` must be 0, 90, 180 or 270.
 - Negative coordinates are fine.
 - Views: **front** looks at the low-z side (x increases to the right), **side** looks at the
-  high-x side (low z on the left), **top** looks down, **iso** is front-right-above. For a
-  vehicle or animal, put its length along x so the front view shows its profile.
+  high-x side (low z on the left), **top** looks down, **iso** is front-right-above (it sees
+  the low-z and high-x faces). Front/side/top renders are orthographic. For a vehicle or animal,
+  put its length along x with its **head/nose at high x**, so the front view shows its profile
+  and the iso view shows its face.
 
 ### Parts (only these exist)
 
@@ -84,8 +86,9 @@ corner.
   face**. Nothing can be attached on the sloped face.
 - **Inverted slope:** full studs on top, but only the row opposite the face can sit on studs
   below; the sloped underside overhangs. Good for noses, wings and roof eaves.
-- The checker treats a slope as its full box: nothing may be placed in the empty space above
-  the sloped face.
+- The checker treats a slope as its full box: nothing may be placed inside that box above the
+  sloped face. A part sitting at the slope's top level (`y + 3`) on the stud row is fine, and
+  so is a narrower slope row stacked one stud inward.
 - Example: `models/examples/slopes.py` (all four directions).
 
 Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`, `yellow`,
@@ -112,15 +115,20 @@ with m.step():                                  # hips
     m.plate("2x4", x=0, z=0, y=7, color="red")
 with m.step():
     m.attach(leg, x=0, y=0, z=0)                # leg's (0, 0, 0) lands at (0, 0, 0)
-    m.attach(leg, x=2, y=0, z=0, rot=0)         # second copy; rot turns it about its (0, 0)
+    m.attach(leg, x=2, y=0, z=0, rot=0)         # second copy
 ```
 
 - Finish all of a sub-assembly's steps before attaching it; it can't be changed afterwards.
 - In the preview, its steps are shown on their own ("Build 2× the leg") right before the step
   that attaches it ("Attach 2× the leg").
-- `lego render --step N` numbers instruction steps and prints the caption, the new parts, and
+- `attach(..., rot=...)` turns the copy about the sub-assembly's grid point (0, 0) — the corner
+  where its x and z coordinates start — before moving it to (x, z). **Turning is not
+  mirroring**: a left wing turned 180° is not a right wing. Build mirrored left/right parts as
+  two sub-assemblies, or place them directly with a small mirror helper in your program.
+- `lego render --step N` numbers instruction steps and prints `Step N / T · title | new: … |
+  pink box …`: the caption, the new parts (including sub-assemblies being attached), and
   whether a weak part is marked. In step renders, earlier steps are faded so new parts stand
-  out, and the weakest joint (B7) gets a magenta box.
+  out, and the weakest joint (B7) gets a magenta box. The final step is shown unfaded.
 - Checks: the sub-assembly's own steps must follow the step rules (one piece after each step,
   ≤ 6 parts, nothing wedged). Attaching it counts as **one** item of the main step, and it must
   connect to what is already built, pressed on as one rigid piece. See the full example in
@@ -173,8 +181,17 @@ with m.step():
 - Two plate layers only lock together if **every top plate overlaps at least two bottom
   plates**. A plate sitting exactly on a same-sized plate is always a separate island. If the
   plates can't tie a base together on their own, put the first body bricks in the same steps.
+- A proven square base: four 2x4 plates in a **pinwheel** around the centre (each turned 90°
+  from its neighbour), and the second layer as a pinwheel turning the other way. More than 6
+  bottom plates: lay 6 in step 1, lock them in step 2, press the rest up from below in step 3
+  with the parts that lock them.
+- Step 1 doesn't have to touch the table: it can be one connected piece in the air (e.g. hips
+  that the legs are attached under in step 2).
 - Two legs (or towers) can't be built side by side on the table and joined later. Build them as
   a sub-assembly and attach both under a hip part that is already there.
+- Vehicles: build each axle (two wheel blocks joined by crossed plates) as a sub-assembly. Start
+  the chassis on the rear axle and attach the front axle in the step where the floor reaches it.
+  There are no round wheels; 2x2 bricks stand in for them.
 - Alternate the direction of joints between layers so each layer locks the one below.
 - **Watch for seams that line up through every layer.** Bricks stacked so their joints fall at
   the same x (or z) on every layer form separate towers that only touch side by side. Every
@@ -183,6 +200,7 @@ with m.step():
 - Details on **top** surfaces (lights, buttons, antennas) are 1×1 plates or bricks on studs.
   Details on **side faces** (eyes, windows, a chest light, a door) can't be attached sideways
   with these parts: build them into the wall as a differently colored brick in that layer.
-- Symmetry is cheap in code: compute one side and mirror `x`.
+- Symmetry is cheap in code: compute one side and mirror `x` (or `z`) with a helper.
 - Roofs, car noses, wing edges: use slopes facing outward; stack a narrower slope row on top
-  for a taller roof. Without enough room, step the layers one stud narrower instead.
+  for a taller roof, and **fill the gable ends** (bricks in the wall's colour under each slope
+  row) or the roof is hollow from the side. Without slopes, step the layers one stud narrower.

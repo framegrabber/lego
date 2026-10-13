@@ -32,6 +32,10 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# Design programs are written by Claude; closures that run immediately inside loops are fine.
+"models/**" = ["B023"]
+
 [tool.basedpyright]
 typeCheckingMode = "standard"
 venvPath = "."

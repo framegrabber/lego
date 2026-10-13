@@ -49,6 +49,7 @@ class Report:
     name: str
     issues: list[Issue] = field(default_factory=list)
     score: float | None = None  # graded checks only (B7)
+    note: str | None = None  # extra hint, e.g. the weakest joint
 
     @property
     def ok(self) -> bool:
@@ -70,6 +71,7 @@ def to_json(reports: list[Report]) -> dict:
 
     {"ok": bool,
      "checks": [{"check": "B2", "name": "no collisions", "ok": false, "score": float | null,
+                 "note": str | null,
                  "issues": [{"message": str, "level": "error" | "warning",
                              "parts": [{"index": int, "step": int, "call": str,
                                         "sub": str | null, "sub_step": int | null}],
@@ -83,6 +85,7 @@ def to_json(reports: list[Report]) -> dict:
                 "name": r.name,
                 "ok": r.ok,
                 "score": None if r.score is None else round(r.score, 2),
+                "note": r.note,
                 "issues": [asdict(i) for i in r.issues],
             }
             for r in reports
@@ -98,6 +101,8 @@ def to_text(reports: list[Report]) -> str:
             status = "ok with warnings"
         score = f" (score {r.score:.2f})" if r.score is not None else ""
         lines.append(f"{r.check} {r.name}: {status}{score}")
+        if r.note:
+            lines.append(f"  ({r.note})")
         for issue in r.issues:
             at = f" at {issue.at}" if issue.at else ""
             mark = "warning: " if issue.level == "warning" else ""

@@ -56,3 +56,37 @@ likeness 1–3 (1 = unrecognizable, 3 = clearly it). "Self" is the designing age
 - Open, needs a decision: B5 counts any earlier part anywhere in the column; physically a part
   with a gap above or below can be slid in sideways (robot ears). Racing-car agent: step 1 could
   allow small loose sub-pieces that rest on a bottom-layer part.
+
+## Full eval, toolchain v2 (2026-10-14, overnight)
+
+All 10 prompts, each by a fresh agent with only the skill. Toolchain: B1–B7, sub-assemblies,
+slopes, preview with fade / new-parts list / weak marker. Numbers re-verified independently;
+"Parts/steps" = parts / main steps / instruction steps; "Largest" = items in the biggest step.
+
+| # | Program | Parts/steps | Largest | Iter. | Checks | B7 | Sub-asm. | Slopes | Likeness self | Likeness human |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `e2_racing_car.py` | 52 / 10 / 14 | 6 | 3 | all ok | 0.94 | axle ×2 | 3 | 3 | |
+| 2 | `e2_house.py` | 66 / 13 / 13 | 6 | 2 | all ok | 0.94 | — | 14 | 3 | |
+| 3 | `e2_lighthouse.py` | 68 / 17 / 17 | 6 | 3 | all ok | 0.91 | — | 2 | 3 | |
+| 4 | `e2_robot.py` | 54 / 11 / 15 | 5 | 1 | all ok | 0.72 | leg ×2, arm ×2 | — | 3 | |
+| 5 | `e2_rocket.py` | 79 / 20 / 20 | 6 | 2 | all ok | 0.99 | — | 10 | 3 | |
+| 6 | `e2_dog.py` | 55 / 12 / 12 | 6 | 3 | all ok | 0.87 | — | 7 | 2.5 | |
+| 7 | `e2_castle_tower.py` | 107 / 22 / 22 | 6 | 3 | all ok | 0.85 | — | 10 inv. | 3 | |
+| 8 | `e2_bridge.py` | 83 / 17 / 19 | 6 | 3 | all ok | 1.00 | railing ×8 | 8 inv. | 3 | |
+| 9 | `e2_tree.py` | 51 / 5 / 12 | 6 | 2 | all ok | 0.84 | crown | 6 | 3 | |
+| 10 | `e2_spaceship.py` | 78 / 18 / 20 | 6 | 2 | all ok | 0.66 | engine ×2 | 8 | 3 | |
+
+- **10/10 delivered**, all checks passing, no B7 warnings, 51–107 parts (spec: ≥ 8/10, 50–400).
+- Check failures during design were rare and fixed in one iteration each: B4 ×3 (base plates
+  not locked: castle, lighthouse; wheels loose in step 1: racing car), B2 ×1 (bridge). Most
+  iterations were for looks.
+- Reviewer (main session) looked at house, dog, spaceship, bridge, lighthouse: likeness agrees
+  with self-ratings (dog reads well in profile only).
+- Fixed from this run: see-through colours rendered opaque (fade code overwrote their
+  transparency); white rendered grey (lighting); perspective top view (now orthographic
+  front/side/top); attach steps didn't list the sub-assembly as new; B7 now names the weakest
+  joint; skill: pinwheel base, step 1 may float, vehicles = axle sub-assemblies, turning ≠
+  mirroring, head at +x, slope box rule, fill gable ends.
+- Open: tipping while building is not checked (racing car agent: a chassis growing forward on
+  the rear axle would tip on a table); pressing plates up under an existing layer is allowed by
+  B5 but fiddly by hand (castle agent); no round parts (wheels, cones).

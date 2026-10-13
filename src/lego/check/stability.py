@@ -251,6 +251,11 @@ def stable(model: Model) -> Report:
     finals = [w.final for w in worst.values() if w.final is not None]
     scores = finals + [t for _, t in tipping]
     report.score = min(scores) if scores else 1.0
+    finished = {i: w.final for i, w in worst.items() if w.final is not None}
+    if finished:
+        weakest = min(finished, key=lambda i: finished[i])
+        ref = PartRef.of(model, weakest)
+        report.note = f"weakest joint in the finished model: #{weakest} {ref.call}"
     for index, w in sorted(worst.items(), key=lambda kv: kv[1].score):
         if w.score >= WARN:
             continue
