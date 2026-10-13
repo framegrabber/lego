@@ -17,28 +17,50 @@ instructions they can follow with real bricks — without an adult fixing anythi
    the end without getting stuck.
 2. As a kid, I see my model in 3D in a browser and can spin it before building.
 3. As a kid, I ask for a change ("make the spoiler bigger") and get updated instructions.
-4. As a facilitator, I run one command or Claude Code prompt per kid and hand over a link/PDF.
+4. As a facilitator, I run one command or Claude Code prompt per kid and hand over a link.
 
 **Priority order:** buildability > likeness to description > everything else. Generation time is
 not a constraint.
 
 ### Definition of "buildable" (hard gate)
 
-A model is delivered only if **all** checks pass. Each check returns machine-readable JSON naming
-offending part indices and stud coordinates so Claude can fix them.
+A model is delivered only if B1–B6 pass and the B7 stability score is above the fail threshold.
+Each check returns machine-readable JSON naming offending part indices and stud coordinates so
+Claude can fix them.
 
 | # | Check | Rule |
 |---|---|---|
 | B1 | Valid parts | Every part number exists in the LDraw library and in the supported vocabulary; every color is a valid LDraw color code. |
 | B2 | No collisions | No two parts occupy the same volume (occupancy grid at 1 stud × 1 plate height). |
 | B3 | Connected | The stud/anti-stud connection graph of the finished model is a single component. |
-| B4 | Step-wise connected | After every step, all placed parts form one connected component (or attach to the baseplate). No step introduces a part that only connects to parts from later steps. |
+| B4 | Step-wise connected | After every step, all placed parts form one connected component — attached to the baseplate if one is used, otherwise to the parts of step 1. Free-standing models are supported. No step introduces a part that only connects to parts from later steps. |
 | B5 | Step-wise insertable | Every part in a step can be pressed onto its connections vertically (from above, or from below for underside attachment) without passing through already-placed parts. |
 | B6 | Step size | Each step adds at most 6 parts (configurable); sub-builds are allowed and are checked the same way. |
-| B7 | Stable (heuristic, v1) | No part or sub-structure is held only by a single 1×1 stud connection while supporting other parts; cantilevers beyond a configurable overhang are flagged. Full force-based analysis (StableLego-style) is a later upgrade. |
+| B7 | Stable (graded) | Stability score per part and per step in [0, 1]; see below. |
 
-B1–B6 are exact for the v1 vocabulary. B7 is a heuristic and may produce warnings rather than
-failures; the threshold is an open question.
+B1–B6 are exact pass/fail for the v1 vocabulary. B7 is graded.
+
+### Stability score (B7)
+
+Every part gets a score in [0, 1] (1 = no risk). The model score is the minimum over all parts and
+all intermediate steps (a half-built model must not fall apart in a kid's hands either).
+
+- **Heuristic v1:** for each part, find the weakest set of stud connections holding it (and
+  everything it carries) to the ground, i.e. the minimum stud cut in the connection graph. Compare
+  the clutch of that cut against the load it carries and its lever arm (overhang distance).
+  Free-standing models also get a tipping term: centre of mass must lie inside the support
+  footprint on the table.
+- **v2 (later):** StableLego-style force analysis, plugged in behind the same score interface.
+
+Two configurable thresholds turn the score into a verdict:
+
+| Score | Verdict | Effect |
+|---|---|---|
+| ≥ `warn` (default 0.6) | ok | delivered |
+| `fail` ≤ score < `warn` | fragile | delivered; Claude should try to improve it; flagged parts are highlighted in the preview as "hold carefully" |
+| < `fail` (default 0.3) | unstable | not delivered; Claude must fix |
+
+Default thresholds are placeholders, to be calibrated against physical builds.
 
 ### Likeness (soft gate)
 
@@ -53,34 +75,40 @@ revises. Not machine-checked; evaluated by humans on the eval set.
 | `dsl` | Python API in stud coordinates (`brick`, `plate`, `step`, `submodel`) that Claude writes; produces an in-memory model. | `parts` |
 | `ldraw` | Serialize model → `.ldr` / `.mpd` with `0 STEP` and submodels; parse back for round-trips. | `dsl` |
 | `check` | B1–B7 checks over the in-memory model; JSON report. | `parts`, `dsl` |
-| `render` | Headless PNG renders of a model or a single step. | `ldraw` |
+| `render` | Headless PNG renders of a model or a single step, produced by loading `preview` in headless Chromium (one renderer for Claude and kids). | `preview` |
 | `preview` | Static web page (three.js `LDrawLoader`) showing the model with a step slider (`buildingStep` / `numBuildingSteps`). | `ldraw` |
 | `skill` | Claude Code skill: prompt → DSL program → build → check → render → fix loop → deliver. | all above |
-| `manual` (later) | Printable PDF via LPub3D batch mode. | `ldraw` |
 
-Build order: `parts` → `dsl` → `ldraw` → `check` (B1–B3) → `render` → `skill` (first loop) →
-`check` (B4–B7) → `preview` → `manual`.
+Build order: `parts` → `dsl` → `ldraw` → `check` (B1–B3) → `preview` → `render` → `skill` (first
+loop) → `check` (B4–B7).
 
 ### v1 part vocabulary
 
-Basic bricks and plates, axis-aligned, rotations in 90° steps:
+Axis-aligned parts, rotations in 90° steps:
 
 - Bricks: 1×1 (3005), 1×2 (3004), 1×4 (3010), 2×2 (3003), 2×4 (3001)
 - Plates: 1×1 (3024), 1×2 (3023), 1×4 (3710), 2×2 (3022), 2×4 (3020)
+- Slopes 45°: 2×1 (3040), 2×2 (3039), 2×4 (3037); inverted 2×1 (3665), 2×2 (3660)
 - Baseplate (optional): 32×32 (3811)
 
-Extension (after v1 passes the eval set): slopes, tiles, round bricks, wheels. Each new part must
-declare its connection geometry before the checker accepts it.
+Every part declares its connection geometry as data in `parts`: footprint, height, stud positions
+(slopes: back row only), anti-stud positions (inverted slopes: back row only), and occupancy.
+Slopes use their full bounding box for collision — conservative, so it may reject a rare valid
+placement in the empty space above a slope face but never accepts an invalid one. The DSL takes a
+`facing` argument for slopes so Claude does not reason about rotation matrices.
+
+Slopes are added after bricks and plates pass their checker tests (same plan, later task).
+
+Extension (after v1 passes the eval set): tiles, round bricks, wheels, SNOT.
 
 ## Tech Stack
 
 - Python 3.14, managed with `uv` (0.9.x); package `lego` in `src/lego/`
 - Dev tooling: `basedpyright` (types), `ruff` (lint/format), `pytest`, `debugpy`
 - LDraw parts library (`complete.zip`, ~80 MB) downloaded to `ldraw/` (gitignored)
-- Renderer: LDView or LeoCAD CLI — to be decided in the first spike (macOS headless behaviour
-  unverified)
-- Preview: static HTML + three.js `LDrawLoader`, served locally
-- Later: LPub3D for PDF manuals
+- Renderer and preview: one static HTML page using three.js `LDrawLoader`. Kids open it in a
+  browser; `lego render` screenshots it with headless Chromium via Playwright for Python
+  (new runtime dependency, pending approval).
 
 ## Commands
 
@@ -102,7 +130,7 @@ uv run lego check out/car.mpd --json              # B1–B7 report, exit 1 on fa
 uv run lego render out/car.mpd -o out/car/        # front/side/top/iso PNGs
 uv run lego render out/car.mpd --step 5 -o out/   # single step
 uv run lego preview out/car.mpd                   # serve web preview, print URL
-uv run lego setup                                 # download LDraw library, locate renderer
+uv run lego setup                                 # download LDraw library, install headless Chromium
 ```
 
 ## Project Structure
@@ -113,7 +141,7 @@ src/lego/           → package
   dsl.py            → model-building API
   ldraw.py          → .ldr/.mpd writer/reader
   check/            → one module per check family (collision, connectivity, steps, stability)
-  render.py         → renderer wrapper
+  render.py         → headless-Chromium screenshots of the preview
   cli.py            → `lego` command
 web/                → static preview page
 models/             → example DSL programs (incl. deliberately broken ones for tests)
@@ -157,14 +185,14 @@ dataclasses for model data; checks are pure functions `model → Report`.
   above, single-1×1-stud cantilever). These encode the buildability contract.
 - Round-trip tests: DSL → `.mpd` → parse → same parts/positions/steps.
 - Render and preview are verified by running them (smoke), not by image-diff tests.
-- **Eval set**: ~10 fixed prompts in `evals/prompts.md`; per run record pass/fail of B1–B7,
-  part count, and a human likeness score (1–3).
+- **Eval set**: ~10 fixed prompts in `evals/prompts.md`; per run record pass/fail of B1–B6, the
+  B7 score, part count, and a human likeness score (1–3).
 
 ## Boundaries
 
 - **Always:** run `pytest`, `ruff check`, `basedpyright` before committing; keep checks
   deterministic; every check failure names parts and coordinates; never deliver a model that
-  fails B1–B6.
+  fails B1–B6 or scores below the B7 fail threshold.
 - **Ask first:** adding runtime dependencies (e.g. pyldraw3, StableLego, Gurobi); expanding the
   part vocabulary; changing the B1–B7 definitions; anything that installs system software.
 - **Never:** commit the LDraw library or generated output; weaken a check to make a model pass;
@@ -174,18 +202,16 @@ dataclasses for model data; checks are pure functions `model → Report`.
 
 1. `lego check` correctly classifies every model in the test suite (all good models pass, every
    deliberately broken model fails with the right check and part index).
-2. On the eval set, the skill delivers a model that passes B1–B6 for ≥ 8 of 10 prompts, within any
-   number of fix iterations; failures are reported, never silently delivered.
+2. On the eval set, the skill delivers a model that passes B1–B6 with B7 ≥ `fail` for ≥ 8 of 10
+   prompts, within any number of fix iterations; failures are reported, never silently delivered.
 3. Delivered models are 50–400 parts.
-4. The web preview shows the model and steps through it with a slider.
+4. The web preview shows the model and steps through it with a slider; it is the instruction
+   format (no PDF).
 5. **Physical test:** at least 3 delivered models are built from real bricks by someone following
    only the instructions, without getting stuck.
 
 ## Open Questions
 
-1. **Instruction format for kids:** is the web step player enough, or is a printable PDF (LPub3D)
-   needed for workshops? Spec assumes web first, PDF later.
-2. **B7 threshold:** should stability issues block delivery or only warn in v1?
-3. **Renderer:** LDView vs. LeoCAD on macOS — decided by spike.
-4. **Vocabulary:** is bricks + plates enough for likeness kids accept, or should slopes be in v1?
-5. **Baseplate:** always build on a baseplate (simplifies B4) or allow free-standing models?
+1. **B7 thresholds:** defaults 0.3 / 0.6 are guesses; calibrate after the first physical builds.
+2. **Playwright:** approve as runtime dependency (~150 MB Chromium download) for headless
+   rendering.
