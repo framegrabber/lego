@@ -16,6 +16,7 @@ Every part belongs to the step it was placed in:
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 
 from lego import parts
 from lego.parts import Cell, Part
@@ -75,6 +76,12 @@ class Model:
         if len(self.placements) == count_before:
             raise DesignError(f"step {self.num_steps + 1} is empty")
         self.num_steps += 1
+
+    def save(self, path: str | Path) -> None:
+        """Write the model as an LDraw `.mpd` file."""
+        from lego import ldraw  # ldraw imports this module
+
+        ldraw.save(self, Path(path))
 
     def brick(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
         self._place("brick", size, x=x, y=y, z=z, color=color, rot=rot)

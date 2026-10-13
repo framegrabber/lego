@@ -50,9 +50,9 @@ anti-stud cells) and the LDraw color table parsed from `LDConfig.ldr` (names →
 `dsl.py`: `Model` with `brick`, `plate`, `step()` context manager, integer grid positions,
 `rot` in {0, 90, 180, 270}; rejects unknown part names/colors/rotations immediately.
 **Acceptance:**
-- [ ] The spec's code-style example runs unchanged
-- [ ] Invalid input (unknown part, color, non-integer position, rot=45) raises with a message naming the call
-- [ ] Rotated footprints are correct (2×4 at rot=90 covers 4×2 cells)
+- [x] The spec's code-style example runs unchanged (after fixing its floating brick — see SPEC.md)
+- [x] Invalid input (unknown part, color, non-integer position, rot=45) raises with a message naming the call
+- [x] Rotated footprints are correct (2×4 at rot=90 covers 4×2 cells)
 **Verify:** unit tests for footprints/rotations and validation.
 **Depends on:** 1 · **Files:** `src/lego/parts.py`, `src/lego/dsl.py`, `tests/test_dsl.py` · **Size:** M
 
@@ -61,13 +61,13 @@ anti-stud cells) and the LDraw color table parsed from `LDConfig.ldr` (names →
 rotation matrices, `0 STEP` between steps) and parses it back. `lego build PROGRAM -o FILE` runs a
 DSL program. Add `models/wall.py` (multi-step example).
 **Acceptance:**
-- [ ] Round-trip: DSL → `.mpd` → parse gives identical parts, positions, rotations, colors, steps
-- [ ] `lego build models/wall.py -o out/wall.mpd` then `lego preview out/wall.mpd` shows correctly placed parts and steps
+- [x] Round-trip: DSL → `.mpd` → parse gives identical parts, positions, rotations, colors, steps
+- [x] `lego build models/wall.py -o out/wall.mpd` then `lego preview out/wall.mpd` shows correctly placed parts and steps
 **Verify:** round-trip test; visual check in preview and with `lego render`.
 **Depends on:** 3, 4 · **Files:** `src/lego/ldraw.py`, `src/lego/cli.py`, `models/wall.py`, `tests/test_ldraw.py` · **Size:** M
 
 ### Checkpoint: Model core
-- [ ] DSL program → `.mpd` → preview with steps works end to end
+- [x] DSL program → `.mpd` → preview with steps works end to end
 
 ## Phase 2 — Checker core + first Claude loop
 

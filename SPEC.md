@@ -154,9 +154,10 @@ ldraw/, out/        → gitignored: parts library, generated output
 
 ## Code Style
 
-The DSL is what Claude writes, so it must be short and unambiguous. Coordinates are in studs
-(x, z) and plates (y, upward); the compiler converts to LDraw units (20 LDU per stud, 8 LDU per
-plate, LDraw −Y is up).
+The DSL is what Claude writes, so it must be short and unambiguous. Coordinates are integers in
+studs (x, z) and plates (y, upward); `x, z` is the footprint's min corner and `y` its bottom level.
+An unrotated `AxB` part covers B studs along x and A along z (LDraw orientation); `rot=90/270`
+swaps them. The compiler converts to LDraw units (20 LDU per stud, 8 LDU per plate, −Y up).
 
 ```python
 from lego.dsl import Model
@@ -165,10 +166,10 @@ m = Model("racing car")
 
 with m.step():
     m.plate("2x4", x=0, z=0, y=0, color="black")
-    m.plate("2x4", x=0, z=4, y=0, color="black")
+    m.plate("2x4", x=0, z=2, y=0, color="black")   # unrotated 2x4: 4 studs in x, 2 in z
 
 with m.step():
-    m.brick("2x4", x=0, z=2, y=1, color="red")   # spans z 2..6: bridges both plates
+    m.brick("2x4", x=0, z=1, y=1, color="red")     # covers z 1..3: bridges both plates
 
 m.save("out/car.mpd")
 ```

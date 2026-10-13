@@ -10,9 +10,9 @@ def test_spec_example_places_parts_in_steps():
     m = Model("racing car")
     with m.step():
         m.plate("2x4", x=0, z=0, y=0, color="black")
-        m.plate("2x4", x=0, z=4, y=0, color="black")
+        m.plate("2x4", x=0, z=2, y=0, color="black")
     with m.step():
-        m.brick("2x4", x=0, z=2, y=1, color="red")
+        m.brick("2x4", x=0, z=1, y=1, color="red")
 
     assert m.num_steps == 2
     assert [(p.part.ldraw_id, p.step, p.color) for p in m.placements] == [
