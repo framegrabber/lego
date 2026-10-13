@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LEGO preview</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, sans-serif; }
+    #viewport { position: absolute; inset: 0; }
+    #controls {
+      position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255, 255, 255, 0.92); padding: 10px 18px; border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15); font-size: 18px;
+    }
+    #controls button { font-size: 20px; min-width: 44px; min-height: 44px; border-radius: 8px; }
+    #controls input[type=range] { width: min(50vw, 400px); }
+    #step-label { white-space: nowrap; }
+    #status { position: absolute; top: 16px; left: 16px; font-size: 16px; color: #444; }
+    body.headless #controls, body.headless #status { display: none; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="viewport"></div>
+  <div id="status">Loading…</div>
+  <div id="controls" hidden>
+    <button id="prev" aria-label="Previous step">◀</button>
+    <input id="step" type="range" min="1" value="1" aria-label="Building step">
+    <button id="next" aria-label="Next step">▶</button>
+    <span id="step-label"></span>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
