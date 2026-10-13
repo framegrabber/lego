@@ -13,24 +13,20 @@ SLIT = "black"
 
 m = Model("castle tower")
 
-# Floor, levels 0-1. Layer 1 rows alternate their x seam (x=4 / x=2); layer 2 columns alternate
-# their z seam (z=4 / z=2), so no seam runs straight through both layers.
+# Floor, levels 0-1. Each layer is four 2x4 plates and one 2x2 in a different arrangement, so
+# every bottom plate is crossed by a top plate and step 2 locks the floor into one piece.
 with m.step():
-    for z, seam_at_4 in ((0, True), (2, False), (4, True)):
-        if seam_at_4:
-            m.plate("2x4", x=0, z=z, y=0, color=FLOOR)
-            m.plate("2x2", x=4, z=z, y=0, color=FLOOR)
-        else:
-            m.plate("2x2", x=0, z=z, y=0, color=FLOOR)
-            m.plate("2x4", x=2, z=z, y=0, color=FLOOR)
+    m.plate("2x4", x=0, z=0, y=0, color=FLOOR)
+    m.plate("2x4", x=0, z=2, y=0, color=FLOOR)
+    m.plate("2x4", x=0, z=4, y=0, color=FLOOR)
+    m.plate("2x4", x=4, z=0, y=0, color=FLOOR, rot=90)
+    m.plate("2x2", x=4, z=4, y=0, color=FLOOR)
 with m.step():
-    for x, seam_at_4 in ((0, True), (2, False), (4, True)):
-        if seam_at_4:
-            m.plate("2x4", x=x, z=0, y=1, color=FLOOR, rot=90)
-            m.plate("2x2", x=x, z=4, y=1, color=FLOOR)
-        else:
-            m.plate("2x2", x=x, z=0, y=1, color=FLOOR)
-            m.plate("2x4", x=x, z=2, y=1, color=FLOOR, rot=90)
+    m.plate("2x4", x=0, z=0, y=1, color=FLOOR, rot=90)
+    m.plate("2x2", x=0, z=4, y=1, color=FLOOR)
+    m.plate("2x4", x=2, z=0, y=1, color=FLOOR)
+    m.plate("2x4", x=2, z=2, y=1, color=FLOOR, rot=90)
+    m.plate("2x4", x=4, z=2, y=1, color=FLOOR, rot=90)
 
 # Walls: ring at x 0..5, z 0..5, one stud thick. Eight brick courses from level 2 up.
 COURSES = [2 + 3 * i for i in range(8)]

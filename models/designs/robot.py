@@ -19,28 +19,38 @@ LEG_X = (0, 4)          # left and right leg min-x
 ARM_X = (-2, 6)         # left and right arm min-x
 LIMB_Z = 1              # legs, arms and neck are 2x2 at z 1..2
 
-# --- Feet (y 0..3) -----------------------------------------------------------
-with m.step():
-    for x in LEG_X:
-        m.plate("2x4", x=x, y=0, z=-1, color=JOINT, rot=90)
-with m.step():
-    for x in LEG_X:
-        m.brick("2x4", x=x, y=1, z=-1, color=FOOT, rot=90)
+# The two legs can't be built side by side: they would stay two loose towers until
+# the hips join them. Build the left leg up, lay the hips across both leg positions,
+# then hang the right leg underneath the hips, top to bottom.
+L, R = LEG_X
 
-# --- Legs (y 4..13) ----------------------------------------------------------
+# --- Left foot and leg (y 0..13) -------------------------------------------------
 with m.step():
-    for x in LEG_X:
-        m.brick("2x2", x=x, y=4, z=LIMB_Z, color=LIMB)
-        m.brick("2x2", x=x, y=7, z=LIMB_Z, color=LIMB)
+    m.plate("2x4", x=L, y=0, z=-1, color=JOINT, rot=90)
+    m.brick("2x4", x=L, y=1, z=-1, color=FOOT, rot=90)
 with m.step():
-    for x in LEG_X:
-        m.plate("2x2", x=x, y=10, z=LIMB_Z, color=JOINT)   # knee
-        m.brick("2x2", x=x, y=11, z=LIMB_Z, color=LIMB)
+    m.brick("2x2", x=L, y=4, z=LIMB_Z, color=LIMB)
+    m.brick("2x2", x=L, y=7, z=LIMB_Z, color=LIMB)
+with m.step():
+    m.plate("2x2", x=L, y=10, z=LIMB_Z, color=JOINT)       # knee
+    m.brick("2x2", x=L, y=11, z=LIMB_Z, color=LIMB)
 
-# --- Hips (y 14) -------------------------------------------------------------
+# --- Hips (y 14): a 2x4 reaches from the left leg over the right leg's top stud --
 with m.step():
-    m.plate("2x4", x=0, y=14, z=LIMB_Z, color=JOINT)
-    m.plate("2x2", x=4, y=14, z=LIMB_Z, color=JOINT)
+    m.plate("2x4", x=1, y=14, z=LIMB_Z, color=JOINT)
+    m.plate("1x2", x=0, y=14, z=LIMB_Z, color=JOINT, rot=90)
+
+# --- Right leg hangs under the hips (y 13 down to 0) -----------------------------
+with m.step():
+    m.brick("2x2", x=R, y=11, z=LIMB_Z, color=LIMB)
+    m.plate("1x2", x=5, y=14, z=LIMB_Z, color=JOINT, rot=90)
+    m.plate("2x2", x=R, y=10, z=LIMB_Z, color=JOINT)       # knee
+with m.step():
+    m.brick("2x2", x=R, y=7, z=LIMB_Z, color=LIMB)
+    m.brick("2x2", x=R, y=4, z=LIMB_Z, color=LIMB)
+with m.step():
+    m.brick("2x4", x=R, y=1, z=-1, color=FOOT, rot=90)
+    m.plate("2x4", x=R, y=0, z=-1, color=JOINT, rot=90)
 
 # --- Torso (y 15..23), three brick layers with alternating joints ------------
 with m.step():
@@ -85,7 +95,6 @@ with m.step():
     m.plate("2x2", x=4, y=34, z=1, color=LIMB)
     m.plate("1x4", x=1, y=34, z=0, color=LIMB)
     m.plate("1x4", x=1, y=34, z=3, color=LIMB)
-with m.step():
     for x in (0, 5):                                         # ears hang under the top plate
         m.brick("1x2", x=x, y=31, z=1, color=ACCENT, rot=90)
 

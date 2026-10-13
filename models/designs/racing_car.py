@@ -27,77 +27,103 @@ FRONT_AXLE_X = 10
 UNDER_COLOR = "dark_bluish_grey"
 BODY_COLOR = "red"
 
-# --- chassis: two plate layers, joints staggered so every column is locked ---
+# --- chassis: two plate layers ---
+# Under layer (grey) runs along x in three rows; deck (red) runs across in 2-wide columns,
+# alternating a 2x4 (spanning 4 rows' worth of z) with a 2x2. The z=0..1 row only bonds to
+# the rest through the body bricks on top, so a few body parts are placed while the chassis
+# grows: after every step the build is one piece.
 
 
-def deck_column(x: int, even: bool) -> None:
-    """Top chassis plates spanning the width at x..x+1 (alternating split)."""
-    if even:
-        m.plate("2x4", x=x, z=0, y=DECK, color=BODY_COLOR, rot=90)
-        m.plate("2x2", x=x, z=4, y=DECK, color=BODY_COLOR)
-    else:
-        m.plate("2x2", x=x, z=0, y=DECK, color=BODY_COLOR)
-        m.plate("2x4", x=x, z=2, y=DECK, color=BODY_COLOR, rot=90)
+def under(size: str, x: int, z: int) -> None:
+    m.plate(size, x=x, z=z, y=UNDER, color=UNDER_COLOR)
 
 
-def under_outer_rows(x: int, size: str) -> None:
-    """Bottom plates in the outer rows (z=0 and z=4)."""
-    for z in (0, 4):
-        m.plate(size, x=x, z=z, y=UNDER, color=UNDER_COLOR)
+def deck_long(x: int, z: int) -> None:
+    """Red 2x4 deck plate across the width: x..x+1, z..z+3."""
+    m.plate("2x4", x=x, z=z, y=DECK, color=BODY_COLOR, rot=90)
 
 
-def wheel_pair(x: int) -> None:
-    """Axle plates 10 studs wide (z=-2..7) with a wheel standing on each end.
+def deck_short(x: int, z: int) -> None:
+    m.plate("2x2", x=x, z=z, y=DECK, color=BODY_COLOR)
 
-    Every axle plate reaches under the 6-wide chassis, so the chassis locks them.
-    """
+
+def axle_plates(x: int) -> None:
+    """Axle plates 10 studs wide (z=-2..7); each one reaches under the chassis."""
     m.plate("2x4", x=x, z=-2, y=AXLE, color="black", rot=90)
     m.plate("2x2", x=x, z=2, y=AXLE, color="black")
     m.plate("2x4", x=x, z=WIDTH - 2, y=AXLE, color="black", rot=90)
+
+
+def wheels(x: int) -> None:
     for z in (-2, WIDTH):
         m.brick("2x2", x=x, z=z, y=AXLE + 1, color="black")
 
 
-with m.step():  # rear wheels
-    wheel_pair(REAR_AXLE_X)
+with m.step():  # rear axle plates on the table
+    axle_plates(REAR_AXLE_X)
 
-with m.step():
-    under_outer_rows(0, "2x4")
-    m.plate("2x2", x=0, z=2, y=UNDER, color=UNDER_COLOR)
-    deck_column(0, even=True)
+with m.step():  # first chassis plates lock all three axle plates together
+    under("2x4", 0, 0)
+    under("2x4", 2, 2)
+    under("2x4", 0, 4)
+    deck_long(0, 0)
+    deck_long(2, 2)
+    m.brick("2x4", x=0, z=2, y=BODY, color=BODY_COLOR)  # middle of the rear block
 
-# columns x=2..12: outer rows join at x=4, 8, 12; middle row at x=2, 6, 10
-for x in range(2, LENGTH, 2):
-    with m.step():
-        deck_column(x, even=(x // 2) % 2 == 0)
-        if x % 4 == 2:
-            m.plate("2x4", x=x, z=2, y=UNDER, color=UNDER_COLOR)
-        else:
-            under_outer_rows(x, "2x4" if x + 4 <= LENGTH else "2x2")
+with m.step():  # rear wheels, rest of the rear chassis
+    wheels(REAR_AXLE_X)
+    deck_short(0, 4)
+    deck_short(2, 0)
+    under("2x2", 0, 2)
+
+with m.step():  # rear block
+    for z in (0, 4):
+        m.brick("2x4", x=0, z=z, y=BODY, color=BODY_COLOR)
+
+with m.step():  # chassis x=4..7 and the black seat that bonds it
+    under("2x4", 4, 0)
+    deck_long(4, 0)
+    deck_short(6, 0)
+    under("2x4", 4, 4)
+    deck_long(6, 2)
+    m.plate("2x2", x=5, z=2, y=BODY, color="black")  # seat
+
+with m.step():  # chassis x=4..11
+    deck_short(4, 4)
+    under("2x4", 6, 2)
+    deck_long(8, 0)
+    under("2x4", 8, 0)
+    deck_short(10, 0)
+
+with m.step():  # chassis x=8..13 and the nose brick that bonds it
+    under("2x4", 8, 4)
+    deck_short(8, 4)
+    deck_long(10, 2)
+    under("2x4", 10, 2)
+    m.brick("2x4", x=10, z=1, y=BODY, color=BODY_COLOR, rot=90)  # nose
+
+with m.step():  # chassis tip and the front wing plate
+    deck_long(12, 0)
+    under("2x2", 12, 0)
+    under("2x2", 12, 4)
+    deck_short(12, 4)
+    m.plate("2x4", x=12, z=1, y=BODY, color=BODY_COLOR, rot=90)
 
 # --- front wheels hang under the chassis ---
 with m.step():
-    wheel_pair(FRONT_AXLE_X)
+    axle_plates(FRONT_AXLE_X)
+    wheels(FRONT_AXLE_X)
 
 # --- body ---
-with m.step():  # rear block
-    for z in (0, 2, 4):
-        m.brick("2x4", x=0, z=z, y=BODY, color=BODY_COLOR)
-
 with m.step():  # side pods
     for z in (0, 4):
         m.brick("2x4", x=4, z=z, y=BODY, color=BODY_COLOR)
         m.brick("2x2", x=8, z=z, y=BODY, color=BODY_COLOR)
 
-with m.step():  # cockpit: seat back, seat, steering wheel, dashboard
+with m.step():  # cockpit: seat back, steering wheel, dashboard; front wing end plates
     m.brick("1x2", x=4, z=2, y=BODY, color="black", rot=90)
-    m.plate("2x2", x=5, z=2, y=BODY, color="black")
     m.plate("1x2", x=7, z=2, y=BODY, color="black", rot=90)
     m.brick("2x2", x=8, z=2, y=BODY, color=BODY_COLOR)
-
-with m.step():  # nose and front wing end plates
-    m.brick("2x4", x=10, z=1, y=BODY, color=BODY_COLOR, rot=90)
-    m.plate("2x4", x=12, z=1, y=BODY, color=BODY_COLOR, rot=90)
     for z in (0, WIDTH - 1):
         m.plate("1x2", x=12, z=z, y=BODY, color="black")
 

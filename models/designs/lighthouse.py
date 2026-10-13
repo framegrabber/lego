@@ -15,17 +15,35 @@ m = Model("lighthouse")
 STRIPES = ["red", "white"]
 
 # --- island ------------------------------------------------------------------
-for zs in ((0, 2), (4, 6)):
-    with m.step():
-        for z in zs:
-            for x in (0, 4):
-                m.plate("2x4", x=x, y=0, z=z, color="dark_bluish_grey")
+# Grey rock: 2x4 plates in four rows of two, seams at x=4 and z=2, 4, 6.
+# Green grass on top bridges every grey seam: 2-wide columns at the left and
+# right edges, plus middle plates whose joints cross both x=4 and z=4.
+def grey(x, z):
+    m.plate("2x4", x=x, y=0, z=z, color="dark_bluish_grey")
 
-for xs in ((0, 2), (4, 6)):
-    with m.step():
-        for x in xs:
-            for z in (0, 4):
-                m.plate("2x4", x=x, y=1, z=z, color="green", rot=90)
+
+def green(x, z, rot=0):
+    m.plate("2x4", x=x, y=1, z=z, color="green", rot=rot)
+
+
+with m.step():                       # front six grey plates, loose on the table
+    for z in (0, 2, 4):
+        for x in (0, 4):
+            grey(x, z)
+
+with m.step():                       # green locks the six into one piece
+    green(2, 0)                      # across x=4 at the front
+    green(0, 0, rot=90)              # left edge, across z=2
+    green(6, 0, rot=90)              # right edge, across z=2
+    green(2, 2, rot=90)              # middle left, across z=4
+    green(4, 2, rot=90)              # middle right, across z=4
+
+with m.step():                       # back row: grey underneath, green on top
+    for x in (0, 4):
+        grey(x, 6)
+    green(0, 4, rot=90)              # left edge, across z=6
+    green(6, 4, rot=90)              # right edge, across z=6
+    green(2, 6)                      # across x=4 at the back
 
 
 def ring6(y, color, layer, door=False):
