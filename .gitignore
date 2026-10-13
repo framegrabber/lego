@@ -1,0 +1,14 @@
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Generated models and renders
+out/
+# LDraw parts library (~80 MB, downloaded)
+ldraw/

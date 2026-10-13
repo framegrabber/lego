@@ -1,0 +1,36 @@
+[project]
+name = "lego"
+version = "0.1.0"
+description = "Claude-driven LEGO design: DSL → LDraw, verification, rendering, instructions"
+readme = "README.md"
+authors = [
+    { name = "Felix Rothballer", email = "felix.rothballer@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+lego = "lego:main"
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.2",
+    "debugpy>=1.8.22",
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
