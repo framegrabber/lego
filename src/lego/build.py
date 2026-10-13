@@ -13,8 +13,8 @@ class BuildError(Exception):
     pass
 
 
-def build(program: Path, out: Path | None = None) -> tuple[Model, Path]:
-    """Run `program`, which must create exactly one module-level `Model`; save it to `out`."""
+def load_program(program: Path) -> Model:
+    """Run `program`, which must create exactly one module-level `Model`, and return it."""
     if not program.is_file():
         raise BuildError(f"program not found: {program}")
     # DesignError gets the program's line number attached; other exceptions propagate with
@@ -36,6 +36,12 @@ def build(program: Path, out: Path | None = None) -> tuple[Model, Path]:
     model = models[0]
     if model.num_steps == 0:
         raise BuildError(f"{program}: model has no steps")
+    return model
+
+
+def build(program: Path, out: Path | None = None) -> tuple[Model, Path]:
+    """Run `program` and save its model to `out` (default: out/<program>.mpd)."""
+    model = load_program(program)
     target = out or ROOT / "out" / f"{program.stem}.mpd"
     ldraw.save(model, target)
     return model, target

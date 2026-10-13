@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from lego import build, preview, render, setup
+from lego.check import run as check
 from lego.dsl import DesignError
 from lego.ldraw import LDrawError
 
@@ -16,6 +17,9 @@ def main(argv: list[str] | None = None) -> int:
     p_build = commands.add_parser("build", help="run a DSL program and write LDraw")
     p_build.add_argument("program", type=Path, help="Python file using lego.dsl")
     p_build.add_argument("-o", "--out", type=Path, help="output .mpd (default: out/<name>.mpd)")
+    p_check = commands.add_parser("check", help="run buildability checks; exit 1 on failure")
+    p_check.add_argument("model", type=Path, help=".mpd/.ldr file or DSL program (.py)")
+    p_check.add_argument("--json", action="store_true", help="machine-readable report")
     p_preview = commands.add_parser("preview", help="serve the web preview for a model")
     p_preview.add_argument("model", type=Path, help=".ldr or .mpd file")
     p_preview.add_argument("--port", type=int, default=preview.DEFAULT_PORT)
@@ -30,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
             setup.run()
         elif args.command == "build":
             build.run(args.program, args.out)
+        elif args.command == "check":
+            if not check.run(args.model, args.json):
+                return 1
         elif args.command == "preview":
             preview.run(args.model, args.port)
         elif args.command == "render":
