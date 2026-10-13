@@ -35,10 +35,19 @@ Claude can fix them.
 | B3 | Connected | The stud/anti-stud connection graph of the finished model is a single component. |
 | B4 | Step-wise connected | After every step, all placed parts form one connected component. **Only exception: step 1 may leave several loose pieces if every step-1 part lies on the model's bottom layer** (plates laid out on the table, as in real instructions); from step 2 on, everything built so far is one piece. Free-standing models are supported; baseplate anchoring comes with baseplate support. |
 | B5 | Step-wise insertable | No part is wedged: a part fails only if parts from earlier steps **touch** it both on top and underneath. A part with a gap above or below can be slid in sideways and pressed on (user decision 2026-10-13; misses the rare fully enclosed cavity). Parts of the same step never block each other: the kid sees the whole step and chooses the order. |
-| B6 | Step size | Each step adds at most 6 parts (configurable); sub-builds are allowed and are checked the same way. |
+| B6 | Step size | Each step adds at most 6 items (configurable); an attached sub-assembly counts as one item. |
 | B7 | Stable (graded) | Stability score per part and per step in [0, 1]; see below. |
 
 B1–B6 are exact pass/fail for the v1 vocabulary. B7 is graded.
+
+### Sub-assemblies (user decision 2026-10-13: before stability)
+
+A sub-assembly is built separately with its own steps and coordinates, then attached in one main
+step (one level deep; copies allowed). In LDraw it is a real MPD submodel referenced from the
+main model, so the file stays usable in Studio/LDCad. Checks: B1–B3 and B7 run on the flattened
+model; B4–B6 run on each sub-assembly's own steps; in the main model the attachment is one rigid
+item that must join what is built (B4) and not be wedged (B5). The preview shows a sub-assembly's
+steps on their own ("Build 2× the leg") right before the main step that attaches it.
 
 ### Stability score (B7)
 
@@ -72,11 +81,11 @@ revises. Not machine-checked; evaluated by humans on the eval set.
 | Module id | Responsibility | Depends on |
 |---|---|---|
 | `parts` | Supported part vocabulary: LDraw id, footprint in studs, height in plates, stud/anti-stud positions; LDraw color table. | LDraw library |
-| `dsl` | Python API in stud coordinates (`brick`, `plate`, `step`, `submodel`) that Claude writes; produces an in-memory model. | `parts` |
+| `dsl` | Python API in stud coordinates (`brick`, `plate`, `step`, `subassembly`, `attach`) that Claude writes; produces an in-memory model with flattened placements. | `parts` |
 | `ldraw` | Serialize model → `.ldr` / `.mpd` with `0 STEP` and submodels; parse back for round-trips. | `dsl` |
 | `check` | B1–B7 checks over the in-memory model; JSON report. | `parts`, `dsl` |
 | `render` | Headless PNG renders of a model or a single step, produced by loading `preview` in headless Chromium (one renderer for Claude and kids). | `preview` |
-| `preview` | Static web page (three.js `LDrawLoader`) showing the model with a step slider (`buildingStep` / `numBuildingSteps`). | `ldraw` |
+| `preview` | Static web page (three.js `LDrawLoader`) showing the model with a step player; sub-assembly steps are shown on their own before the step that attaches them. | `ldraw` |
 | `skill` | Claude Code skill: prompt → DSL program → build → check → render → fix loop → deliver. | all above |
 
 Build order: `parts` → `dsl` → `ldraw` → `check` (B1–B3) → `preview` → `render` → `skill` (first

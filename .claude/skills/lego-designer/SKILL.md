@@ -77,6 +77,35 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
 `trans_clear`, `trans_yellow`, `trans_red`, `trans_light_blue`. The full list is the
 `!COLOUR` lines in `ldraw/LDConfig.ldr`.
 
+### Sub-assemblies
+
+Legs, arms, wings, wheels or a cockpit can be built **separately** with their own steps and
+coordinates, then attached in one step of the main model, like the "build this first" boxes in
+real instructions. Copies of the same sub-assembly can be attached several times.
+
+```python
+leg = m.subassembly("leg")                     # one level deep; name must be unique
+with leg.step():
+    leg.plate("2x4", x=0, z=-1, y=0, color="black", rot=90)
+    leg.brick("2x2", x=0, z=0, y=1, color="light_bluish_grey")
+with leg.step():
+    leg.brick("2x2", x=0, z=0, y=4, color="light_bluish_grey")
+
+with m.step():                                  # hips
+    m.plate("2x4", x=0, z=0, y=7, color="red")
+with m.step():
+    m.attach(leg, x=0, y=0, z=0)                # leg's (0, 0, 0) lands at (0, 0, 0)
+    m.attach(leg, x=2, y=0, z=0, rot=0)         # second copy; rot turns it about its (0, 0)
+```
+
+- Finish all of a sub-assembly's steps before attaching it; it can't be changed afterwards.
+- In the preview, its steps are shown on their own ("Build 2× the leg") right before the step
+  that attaches it. `lego render --step N` prints the caption of step N.
+- Checks: the sub-assembly's own steps must follow the step rules (one piece after each step,
+  ≤ 6 parts, nothing wedged). Attaching it counts as **one** item of the main step, and it must
+  connect to what is already built, pressed on as one rigid piece. See the full example in
+  `models/examples/two_legs.py`.
+
 ### Steps
 
 - `with m.step():` opens the next step; steps cannot be nested or empty.
@@ -114,16 +143,16 @@ Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`
 - **Stability is not checked yet**: overlap joints like a brick wall, avoid parts held by a
   single stud that carry weight, overhang at most 2 studs past the support, and hold every
   overhanging part by at least 2 studs.
-- **No sub-assemblies yet**: everything is built as one growing piece. Build legs, arms or
-  wings outward from the body instead of as separate pieces joined later.
+- **Sub-assemblies** are checked with their own steps; issues inside one start with "inside
+  sub-assembly 'leg'" and name the part with its `leg.brick(...)` call.
 
 ## Design tips
 
 - Two plate layers only lock together if **every top plate overlaps at least two bottom
   plates**. A plate sitting exactly on a same-sized plate is always a separate island. If the
   plates can't tie a base together on their own, put the first body bricks in the same steps.
-- Two legs (or towers) can't be built side by side and joined later. Build one leg up, add a
-  part that spans both leg positions, then hang the second leg underneath it.
+- Two legs (or towers) can't be built side by side on the table and joined later. Build them as
+  a sub-assembly and attach both under a hip part that is already there.
 - Alternate the direction of joints between layers so each layer locks the one below.
 - **Watch for seams that line up through every layer.** Bricks stacked so their joints fall at
   the same x (or z) on every layer form separate towers that only touch side by side. Every
