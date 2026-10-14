@@ -144,31 +144,45 @@ function stepInfo(info, entry) {
   return (entry.sub ? info.subs?.[entry.sub.name] : info.main)?.[entry.upto] ?? null;
 }
 
-const FADED_OPACITY = 0.3;
+// Earlier steps: solid but washed out towards a cool grey, so they recede. New parts: full
+// colour with orange outlines, which stand out whatever the brick colour (white on white too).
+const FADE_TO = new THREE.Color(0xc9ced4);
+const FADE_AMOUNT = 0.65; // surfaces
+const FADE_EDGES = 0.85; // outlines
+const NEW_EDGES = new THREE.Color(0xff7a00);
 
-// look: 'normal' | 'faded' (built in earlier steps)
+// look: 'normal' | 'faded' (built in earlier steps) | 'new' (added in this step)
 function setLook(object, look) {
   object.traverse((child) => {
     if (!child.isMesh && !child.isLine) return;
     if (!child.userData.ownMaterial) {
       // Materials are shared between parts of one color; give each object its own copy and
-      // remember its own transparency (see-through bricks).
+      // remember its original colour.
       child.material = [child.material].flat().map((m) => {
         const own = m.clone();
-        own.userData.base = { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite };
+        own.userData.baseColor = m.color?.clone();
         return own;
       });
       if (child.material.length === 1) child.material = child.material[0];
       child.userData.ownMaterial = true;
     }
     for (const m of [child.material].flat()) {
-      const base = m.userData.base;
-      const faded = look === 'faded';
-      m.transparent = faded || base.transparent;
-      m.opacity = faded ? base.opacity * FADED_OPACITY : base.opacity;
-      m.depthWrite = faded ? false : base.depthWrite;
+      const base = m.userData.baseColor;
+      if (!base) continue;
+      if (look === 'faded') {
+        m.color.copy(base).lerp(FADE_TO, child.isLine ? FADE_EDGES : FADE_AMOUNT);
+      } else if (look === 'new' && child.isLine) {
+        m.color.copy(NEW_EDGES);
+      } else {
+        m.color.copy(base);
+      }
     }
   });
+}
+
+function stepLook(isLast, isNew) {
+  if (isLast) return 'normal'; // the finished model is shown plainly
+  return isNew ? 'new' : 'faded';
 }
 
 // Magenta outline around the weakest joint of a step: a colour no brick has.
@@ -188,14 +202,14 @@ function showEntry(top, entry, isLast, info) {
     for (const t of top) t.object.visible = t.object === entry.sub;
     for (const i of entry.inner) {
       i.object.visible = i.step <= entry.upto;
-      if (i.object.visible) setLook(i.object, isLast || i.step === entry.upto ? 'normal' : 'faded');
+      if (i.object.visible) setLook(i.object, stepLook(isLast, i.step === entry.upto));
     }
     return false;
   }
   for (const t of top) {
     t.object.visible = t.step <= entry.upto;
     if (isSubassembly(t.object)) for (const c of t.object.children) c.visible = true;
-    if (t.object.visible) setLook(t.object, isLast || t.step === entry.upto ? 'normal' : 'faded');
+    if (t.object.visible) setLook(t.object, stepLook(isLast, t.step === entry.upto));
   }
   const weakest = (info?.weak ?? [])
     .filter((w) => w.step === entry.upto && resolvePath(top, w.path)?.visible)

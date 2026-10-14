@@ -132,8 +132,9 @@ with m.step():
   two sub-assemblies, or place them directly with a small mirror helper in your program.
 - `lego render --step N` numbers instruction steps and prints `Step N / T · title | new: … |
   pink box …`: the caption, the new parts (including sub-assemblies being attached), and
-  whether a weak part is marked. In step renders, earlier steps are faded so new parts stand
-  out, and the weakest joint (B7) gets a magenta box. The final step is shown unfaded.
+  whether a weak part is marked. In step renders, parts from earlier steps are solid but washed
+  out to grey, new parts keep their colour and get **orange outlines**, and the weakest joint
+  (B7) gets a magenta box. The final step is shown in plain colours.
 - Checks: the sub-assembly's own steps must follow the step rules (one piece after each step,
   ≤ 6 parts, nothing wedged). Attaching it counts as **one** item of the main step, and it must
   connect to what is already built, pressed on as one rigid piece. See the full example in
