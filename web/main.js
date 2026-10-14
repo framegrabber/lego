@@ -1,7 +1,8 @@
 // LEGO model preview and step player.
 //
 // Query parameters:
-//   model=<url>    LDraw file to show (required)
+//   model=<url>    LDraw file to show (required unless live=1)
+//   live=1         follow the newest model built (served by `lego live`); reloads after builds
 //   step=<n>       1-based building step to show (default: last)
 //   view=<name>    front | side | top | iso — fixed camera, no UI (used by `lego render`)
 //
@@ -23,7 +24,8 @@ const VIEWS = {
 };
 
 const params = new URLSearchParams(location.search);
-const modelUrl = params.get('model');
+const live = params.get('live') === '1';
+let modelUrl = params.get('model');
 const viewName = params.get('view');
 const headless = viewName !== null;
 document.body.classList.toggle('headless', headless);
@@ -271,7 +273,34 @@ function setupStepControls(model, top, sequence, info, initialStep, direction) {
   go(initialStep);
 }
 
+// Live mode: ask the server which model is newest, and reload the page when that changes.
+async function liveModel() {
+  const response = await fetch('/live', { cache: 'no-store' });
+  return response.json();
+}
+
+function followBuilds(current) {
+  setInterval(async () => {
+    try {
+      const now = await liveModel();
+      if (now.model !== current.model || now.version !== current.version) location.reload();
+    } catch {
+      // server restarting; try again next tick
+    }
+  }, 1000);
+}
+
 async function main() {
+  if (live) {
+    const current = await liveModel();
+    followBuilds(current);
+    if (!current.model) {
+      statusEl.textContent = 'Waiting for the first model… (it appears here as soon as it is built)';
+      return;
+    }
+    modelUrl = `/model/${encodeURIComponent(current.model)}`;
+    document.title = `LEGO · ${current.model.replace(/\.(mpd|ldr)$/i, '')}`;
+  }
   if (!modelUrl) throw new Error('missing ?model= parameter');
   if (headless && !(viewName in VIEWS)) throw new Error(`unknown view "${viewName}"`);
 
@@ -311,7 +340,8 @@ async function main() {
     return;
   }
 
-  statusEl.textContent = `Loaded in ${((performance.now() - started) / 1000).toFixed(1)} s`;
+  const loaded = `Loaded in ${((performance.now() - started) / 1000).toFixed(1)} s`;
+  statusEl.textContent = live ? `${document.title.replace('LEGO · ', '')} · ${loaded}` : loaded;
   setupStepControls(model, top, sequence, info, requested, direction);
   renderer.setAnimationLoop(() => {
     controls.update();

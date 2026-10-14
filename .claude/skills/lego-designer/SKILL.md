@@ -32,10 +32,15 @@ Run all commands from the repository root. If `ldraw/` is missing, run `uv run l
 6. **Repeat 3–5** until the check passes and the renders match. There is no iteration limit, but
    if the same issue survives three attempts, step back and redesign that section.
 7. **Deliver:** report the program path, the preview command `uv run lego preview
-   out/<slug>.mpd` (don't run it yourself: it starts a server and blocks), part count, the
-   **instruction step** count (`lego build` prints main steps and instruction steps; the latter
-   is what the kid clicks through), the largest step, the B7 score and any warnings, how many
-   build/check/render iterations it took, and anything you are unsure about.
+   out/<slug>.mpd` (don't run `preview` or `live` yourself: they start a server and block), part
+   count, the **instruction step** count (`lego build` prints main steps and instruction steps;
+   the latter is what the kid clicks through), the largest step, the B7 score and any warnings,
+   how many build/check/render iterations it took, and anything you are unsure about.
+
+The kid may be watching a **live view** (`uv run lego live` in another terminal): it always
+shows the model built last and reloads after every `lego build`, so they see each iteration
+appear. Building into `out/` (the default) is all it needs; tell them when a version is worth
+looking at.
 
 ## The DSL
 

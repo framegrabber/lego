@@ -12,6 +12,7 @@ from pathlib import Path
 
 from lego.dsl import FACINGS, ROTATIONS, Attachment, DesignError, Model, Placement
 from lego.parts import LDU_PER_PLATE, LDU_PER_STUD, PARTS_BY_ID
+from lego.paths import write_atomic
 
 type Matrix = tuple[int, ...]
 type _Fail = Callable[[str], LDrawError]
@@ -95,7 +96,7 @@ def dumps(model: Model) -> str:
 
 def save(model: Model, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(dumps(model))
+    write_atomic(path, dumps(model))
 
 
 def _rotation(tokens: list[str], fail: _Fail) -> int:

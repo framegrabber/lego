@@ -23,6 +23,10 @@ def main(argv: list[str] | None = None) -> int:
     p_preview = commands.add_parser("preview", help="serve the web preview for a model")
     p_preview.add_argument("model", type=Path, help=".ldr or .mpd file")
     p_preview.add_argument("--port", type=int, default=preview.DEFAULT_PORT)
+    p_live = commands.add_parser("live", help="browser view that follows the newest built model")
+    p_live.add_argument("--dir", type=Path, default=None, help="folder to watch (default: out/)")
+    p_live.add_argument("--port", type=int, default=preview.DEFAULT_PORT)
+    p_live.add_argument("--no-open", action="store_true", help="don't open the browser")
     p_render = commands.add_parser("render", help="render PNGs from fixed camera angles")
     p_render.add_argument("model", type=Path, help=".ldr or .mpd file")
     p_render.add_argument("-o", "--out", type=Path, required=True, help="output directory")
@@ -39,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
         elif args.command == "preview":
             preview.run(args.model, args.port)
+        elif args.command == "live":
+            preview.run_live(args.dir, port=args.port, open_browser=not args.no_open)
         elif args.command == "render":
             render.run(args.model, args.out, args.step)
     except (

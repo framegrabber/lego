@@ -28,7 +28,18 @@ uv run lego build models/examples/two_legs.py        # → out/two_legs.mpd (+ .
 uv run lego check out/two_legs.mpd                   # B1–B7, exit 1 on failure; --json for Claude
 uv run lego render out/two_legs.mpd -o out/two_legs  # front/side/top/iso PNGs; --step N
 uv run lego preview out/two_legs.mpd                 # instructions in the browser
+uv run lego live                                     # browser view of the newest build, auto-reloads
 ```
+
+### Side by side: Claude left, live model right
+
+1. Terminal 1: `uv run lego live` — opens the browser on the live view and keeps running.
+2. Terminal 2: `omp` (or `claude`) in this folder; ask for a model with the lego-designer skill.
+3. Tile the two windows: hover the green button of the terminal window and pick
+   "Left" (macOS 15+: Window ▸ Move & Resize ▸ Left), then choose the browser for the right half.
+
+Every `lego build` Claude runs shows up on the right within a second (the page starts at the
+finished model; step back with ◀ or the arrow keys).
 
 ## Checks
 

@@ -13,6 +13,7 @@ from lego.check.stability import FAIL, WARN, stability_scores
 from lego.dsl import Model, Placement
 from lego.ldraw import file_name
 from lego.parts import colors
+from lego.paths import write_atomic
 
 
 def object_paths(model: Model) -> dict[int, list[int]]:
@@ -92,5 +93,5 @@ def instructions(model: Model) -> dict:
 
 def save(model: Model, mpd_path: Path) -> Path:
     target = mpd_path.with_suffix(".json")
-    target.write_text(json.dumps(instructions(model), indent=1))
+    write_atomic(target, json.dumps(instructions(model), indent=1))
     return target
