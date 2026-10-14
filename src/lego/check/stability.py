@@ -48,7 +48,7 @@ class _Worst:
 
 
 def _volume(p: Placement) -> int:
-    return len(p.cells()) * p.part.height
+    return len(p.occupied())
 
 
 def _centre(p: Placement) -> Point:
@@ -157,16 +157,11 @@ def _margin_inside(point: Point, hull: list[Point]) -> float:
 
 
 def _tipping(built: list[Placement], bottom: int) -> float | None:
-    grounded = [p for p in built if p.y == bottom]
-    if not grounded:
+    # What touches the table: the bottom-level cells of the parts that reach it (tyres too).
+    contact = {(x, z) for p in built for x, y, z in p.occupied() if y == bottom}
+    if not contact:
         return None
-    corners = [
-        (float(x + dx), float(z + dz))
-        for p in grounded
-        for x, z in p.cells()
-        for dx in (0, 1)
-        for dz in (0, 1)
-    ]
+    corners = [(float(x + dx), float(z + dz)) for x, z in contact for dx in (0, 1) for dz in (0, 1)]
     hull = _hull(corners)
     total = sum(_volume(p) for p in built)
     com = (
@@ -189,7 +184,7 @@ def stability_scores(model: Model) -> tuple[dict[int, _Worst], list[tuple[int, f
     tipping: list[tuple[int, float]] = []
     if not model.placements:
         return worst, tipping
-    bottom = min(p.y for p in model.placements)
+    bottom = min(p.bottom for p in model.placements)
     for step in range(model.num_steps):
         built = [i for i, p in enumerate(model.placements) if p.step <= step]
         parts = [model.placements[i] for i in built]
@@ -198,10 +193,10 @@ def stability_scores(model: Model) -> tuple[dict[int, _Worst], list[tuple[int, f
         for a, b in joined:
             adjacency[a].add(b)
             adjacency[b].add(a)
-        grounded = [j for j, p in enumerate(parts) if p.y == bottom]
+        grounded = [j for j, p in enumerate(parts) if p.bottom == bottom]
         for j, held in _dependents(len(parts), adjacency, grounded).items():
             p = parts[j]
-            if p.y == bottom:
+            if p.bottom == bottom:
                 continue
             inside = set(held)
             studs: set[tuple[int, int]] = set()

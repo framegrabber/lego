@@ -10,16 +10,30 @@ from collections import Counter
 from pathlib import Path
 
 from lego.check.stability import FAIL, WARN, stability_scores
-from lego.dsl import Model, Placement
+from lego.dsl import Model, Placement, component_color
 from lego.ldraw import file_name
 from lego.parts import colors
 from lego.paths import write_atomic
+
+
+def _object_count(p: Placement) -> int:
+    """three.js objects the part becomes: one per LDraw line (compound parts have several)."""
+    return 1 + len(p.part.components)
 
 
 def object_paths(model: Model) -> dict[int, list[int]]:
     """Placement index → position of its three.js object (see module docstring)."""
     paths: dict[int, list[int]] = {}
     top: dict[str, int] = {}  # attachment label → its line index in the main file
+    sub_lines: dict[str, list[int]] = {}  # sub-assembly name → line index of each of its parts
+    for a in model.attachments:
+        if a.sub.name not in sub_lines:
+            starts, line = [], 0
+            for p in a.sub.placements:
+                starts.append(line)
+                line += _object_count(p)
+            sub_lines[a.sub.name] = starts
+    labels = {a.label: a.sub.name for a in model.attachments}
     line = 0
     for step in range(model.num_steps):
         for i, p in enumerate(model.placements):
@@ -27,13 +41,13 @@ def object_paths(model: Model) -> dict[int, list[int]]:
                 continue
             if p.sub is None:
                 paths[i] = [line]
-                line += 1
+                line += _object_count(p)
             else:
                 if p.sub not in top:
                     top[p.sub] = line
                     line += 1
                 assert p.sub_index is not None
-                paths[i] = [top[p.sub], p.sub_index]
+                paths[i] = [top[p.sub], sub_lines[labels[p.sub]][p.sub_index]]
     return paths
 
 
@@ -48,13 +62,19 @@ def instruction_steps(model: Model) -> int:
 
 
 def _items(placements: list[Placement]) -> list[dict]:
-    names = {code: name.replace("_", " ") for name, code in colors().items()}
-    counts = Counter(
-        (p.part.size, p.part.kind, names.get(p.color, str(p.color))) for p in placements
-    )
+    """Parts to grab for a step, counted by name and color; compound parts list their
+    components (wheel rims, tyres, glass, door) separately."""
+    table = colors()
+    names = {code: name.replace("_", " ") for name, code in table.items()}
+    counts: Counter[tuple[str, str]] = Counter()
+    for p in placements:
+        counts[(p.part.name, names.get(p.color, str(p.color)))] += 1
+        for c in p.part.components:
+            code = component_color(c, p)
+            counts[(c.name, names.get(code, str(code)))] += 1
     return [
-        {"count": n, "part": f"{size} {kind}", "color": color}
-        for (size, kind, color), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        {"count": n, "part": part, "color": color}
+        for (part, color), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
 
 

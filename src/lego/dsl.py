@@ -28,11 +28,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lego import parts
-from lego.parts import Cell, Part
+from lego.parts import Cell, Component, Part
 
 ROTATIONS = (0, 90, 180, 270)
 # Slope face direction → rotation (the unrotated slope faces −z, "front"; see ldraw.R(θ)).
 FACINGS = {"front": 0, "left": 90, "back": 180, "right": 270}
+# Corner slopes face two ways; unrotated they face front (−z) and right (+x).
+CORNER_FACINGS = {"front-right": 0, "front-left": 90, "back-left": 180, "back-right": 270}
+SLOPE_ANGLES = {45: "slope", 33: "slope33", 65: "slope65", 75: "slope75"}
 
 
 class DesignError(ValueError):
@@ -51,6 +54,7 @@ class Placement:
     sub: str | None = None  # attachment label, e.g. "leg" or "leg#2" for a second copy
     sub_index: int | None = None  # index of this part within the sub-assembly
     sub_step: int | None = None  # 0-based step within the sub-assembly
+    color2: int | None = None  # color of the "second" components (glass, door, wheel rims)
 
     @property
     def size_x(self) -> int:
@@ -68,6 +72,24 @@ class Placement:
 
     def levels(self) -> range:
         return range(self.y, self.y + self.part.height)
+
+    def occupied(self) -> frozenset[tuple[int, int, int]]:
+        """World (x, y, z) cells the part fills (footprint × height unless the part says
+        otherwise: arches leave their opening free, wheels stick out beside the holder)."""
+        if self.part.occupancy is None:
+            return frozenset((x, y, z) for x, z in self.cells() for y in self.levels())
+        return frozenset(
+            (wx, self.y + level, wz)
+            for cx, level, cz in self.part.occupancy
+            for wx, wz in [self._to_world((cx, cz))]
+        )
+
+    @property
+    def bottom(self) -> int:
+        """Lowest occupied level (wheels reach below the holder)."""
+        if self.part.occupancy is None:
+            return self.y
+        return self.y + min(level for _, level, _ in self.part.occupancy)
 
     @property
     def top(self) -> int:
@@ -105,6 +127,24 @@ class Attachment:
     step: int  # 0-based main step
 
 
+def component_color(component: Component, p: Placement) -> int:
+    """LDraw color code of a compound part's component."""
+    if component.color == "main":
+        return p.color
+    if component.color == "second" and p.color2 is not None:
+        return p.color2
+    return parts.colors()[component.color]
+
+
+def turn_text(part: Part, rot: int) -> str:
+    """How a DSL call shows the orientation of `part` turned by `rot`."""
+    if part.turn == "facing":
+        return f"facing={next(f for f, r in FACINGS.items() if r == rot)!r}"
+    if part.turn == "corner":
+        return f"facing={next(f for f, r in CORNER_FACINGS.items() if r == rot)!r}"
+    return f"rot={rot}"
+
+
 class Model:
     def __init__(self, name: str, parent: Model | None = None) -> None:
         self.name = name
@@ -136,35 +176,154 @@ class Model:
 
         ldraw.save(self, Path(path))
 
+    # Basic parts, oriented with rot (0/90/180/270).
+
     def brick(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
-        self._place("brick", size, x=x, y=y, z=z, color=color, rot=rot)
+        self._place("brick", size, x, y, z, color, rot=rot)
 
     def plate(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
-        self._place("plate", size, x=x, y=y, z=z, color=color, rot=rot)
+        self._place("plate", size, x, y, z, color, rot=rot)
+
+    def tile(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
+        """Plate-height part with a smooth top: nothing can be attached on it."""
+        self._place("tile", size, x, y, z, color, rot=rot)
+
+    def round_plate(self, size: str, *, x: int, y: int, z: int, color: str | int) -> None:
+        self._place("round_plate", size, x, y, z, color)
+
+    def round_brick(self, size: str, *, x: int, y: int, z: int, color: str | int) -> None:
+        self._place("round_brick", size, x, y, z, color)
+
+    def cone(self, size: str, *, x: int, y: int, z: int, color: str | int) -> None:
+        self._place("cone", size, x, y, z, color)
+
+    def arch(self, size: str, *, x: int, y: int, z: int, color: str | int, rot: int = 0) -> None:
+        """Arch: studs along the top, sits on studs only at its two ends; the opening is free."""
+        self._place("arch", size, x, y, z, color, rot=rot)
+
+    def baseplate(
+        self, size: str = "32x32", *, x: int, y: int, z: int, color: str | int = "green"
+    ) -> None:
+        """Thin baseplate to build on; nothing attaches underneath it."""
+        self._place("baseplate", size, x, y, z, color)
+
+    def window(
+        self,
+        size: str,
+        *,
+        x: int,
+        y: int,
+        z: int,
+        color: str | int,
+        rot: int = 0,
+        glass_color: str | int = "trans_clear",
+    ) -> None:
+        """Window frame with its glass ("1x2x2", "1x2x3")."""
+        self._place("window", size, x, y, z, color, rot=rot, color2=glass_color)
+
+    def door(
+        self,
+        size: str,
+        *,
+        x: int,
+        y: int,
+        z: int,
+        color: str | int,
+        rot: int = 0,
+        door_color: str | int = "red",
+    ) -> None:
+        """Door frame with its door ("1x4x6"); studs only on the middle two top cells."""
+        self._place("door", size, x, y, z, color, rot=rot, color2=door_color)
+
+    def wheels(
+        self,
+        size: str = "small",
+        *,
+        x: int,
+        y: int,
+        z: int,
+        color: str | int,
+        rot: int = 0,
+        rim_color: str | int = "light_bluish_grey",
+    ) -> None:
+        """2x2 plate with two wheels (rims + black tyres) on its sides. Unrotated the axle runs
+        along x: the wheels stick out one stud left and right and reach 2 plates below it."""
+        self._place("wheels", size, x, y, z, color, rot=rot, color2=rim_color)
+
+    # Slopes, oriented by the direction their sloped face points.
 
     def slope(
-        self, size: str, *, x: int, y: int, z: int, color: str | int, facing: str = "front"
+        self,
+        size: str,
+        *,
+        x: int,
+        y: int,
+        z: int,
+        color: str | int,
+        facing: str = "front",
+        angle: int = 45,
     ) -> None:
-        """45° slope, 2 studs deep ("2x1", "2x2", "2x4"); `facing` is where the sloped face
-        points: "front" (−z), "back" (+z), "left" (−x), "right" (+x). Studs only on the row
-        opposite the face."""
-        self._place_slope("slope", size, x=x, y=y, z=z, color=color, facing=facing)
+        """Straight slope; `facing` is where the sloped face points: "front" (−z), "back" (+z),
+        "left" (−x), "right" (+x). Studs only on the row opposite the face.
+        angle 45: "2x1", "2x2", "2x4"; 33: "3x2", "3x4"; 65 and 75: "2x1" (taller)."""
+        if angle not in SLOPE_ANGLES:
+            raise DesignError(
+                f"slope({size!r}, ..., angle={angle!r}): angle must be one of "
+                f"{', '.join(map(str, SLOPE_ANGLES))}"
+            )
+        self._place_facing(SLOPE_ANGLES[angle], size, x, y, z, color, facing)
 
     def inverted_slope(
         self, size: str, *, x: int, y: int, z: int, color: str | int, facing: str = "front"
     ) -> None:
         """Upside-down 45° slope ("2x1", "2x2"): full studs on top, sloped underside points to
         `facing`; only the row opposite the face can sit on studs below."""
-        self._place_slope("inverted_slope", size, x=x, y=y, z=z, color=color, facing=facing)
+        self._place_facing("inverted_slope", size, x, y, z, color, facing)
 
-    def _place_slope(
-        self, kind: str, size: str, *, x: int, y: int, z: int, color: str | int, facing: str
+    def curved_slope(
+        self, size: str, *, x: int, y: int, z: int, color: str | int, facing: str = "front"
     ) -> None:
-        shown = f"facing={facing!r}"
+        """Curved slope without studs ("2x1", "2x2" plate-and-a-bit high; "4x1", "4x2" brick
+        high). Only the low front rows sit on studs; the high end is hollow underneath."""
+        self._place_facing("curved_slope", size, x, y, z, color, facing)
+
+    def cheese_slope(
+        self, size: str = "1x2", *, x: int, y: int, z: int, color: str | int, facing: str = "front"
+    ) -> None:
+        """Small 1x2 slope, 2 plates high, no studs."""
+        self._place_facing("cheese_slope", size, x, y, z, color, facing)
+
+    def corner_slope(
+        self,
+        corner: str,
+        *,
+        x: int,
+        y: int,
+        z: int,
+        color: str | int,
+        facing: str = "front-right",
+    ) -> None:
+        """2x2 corner slope, "outside" (convex, one stud) or "inside" (concave, three studs);
+        `facing` names the two directions its faces point: "front-right", "front-left",
+        "back-left", "back-right"."""
+        if facing not in CORNER_FACINGS:
+            raise DesignError(
+                f"corner_slope({corner!r}, ..., facing={facing!r}): facing must be one of "
+                f"{', '.join(CORNER_FACINGS)}"
+            )
+        self._place("corner_slope", corner, x, y, z, color, rot=CORNER_FACINGS[facing])
+
+    def _place_facing(
+        self, kind: str, size: str, x: int, y: int, z: int, color: str | int, facing: str
+    ) -> None:
         if facing not in FACINGS:
-            call = f"{kind}({size!r}, x={x!r}, y={y!r}, z={z!r}, color={color!r}, {shown})"
-            raise DesignError(f"{call}: facing must be one of {', '.join(FACINGS)}")
-        self._place(kind, size, x=x, y=y, z=z, color=color, rot=FACINGS[facing], shown=shown)
+            raise DesignError(
+                f"{kind}({size!r}, ..., facing={facing!r}): facing must be one of "
+                f"{', '.join(FACINGS)}"
+            )
+        self._place(kind, size, x, y, z, color, rot=FACINGS[facing])
+
+    # Sub-assemblies.
 
     def subassembly(self, name: str) -> Model:
         """A part group built separately (own steps, own coordinates), attached later."""
@@ -205,16 +364,22 @@ class Model:
         self,
         kind: str,
         size: str,
-        *,
         x: int,
         y: int,
         z: int,
         color: str | int,
-        rot: int,
-        shown: str | None = None,
+        *,
+        rot: int = 0,
+        color2: str | int | None = None,
     ) -> None:
-        last = shown if shown is not None else f"rot={rot!r}"
-        call = f"{kind}({size!r}, x={x!r}, y={y!r}, z={z!r}, color={color!r}, {last})"
+        """The one place every part goes through (the LDraw reader uses it too)."""
+        part = parts.PARTS.get((kind, size))
+        shown = turn_text(part, rot) if part and rot in ROTATIONS else f"rot={rot!r}"
+        extra = f", {part.extra_arg}" if part and part.extra_arg else ""
+        second = f", {part.second_param}={color2!r}" if part and part.second_param else ""
+        method = part.call if part else kind
+        args = f"x={x!r}, y={y!r}, z={z!r}, color={color!r}, {shown}{extra}{second}"
+        call = f"{method}({size!r}, {args})"
         if self.parent is not None:
             call = f"{self.name}.{call}"
 
@@ -225,12 +390,16 @@ class Model:
             raise fail("parts must be placed inside `with m.step():`")
         if self._attached:
             raise fail("this sub-assembly is already attached; add all its parts before attaching")
-        part = parts.PARTS.get((kind, size))
         if part is None:
             raise fail(f"unknown {kind} size; known: {', '.join(parts.sizes(kind))}")
         _check_grid(x, y, z, rot, fail)
+        code2 = None
+        if part.second_param:
+            code2 = _color_code(part.second_default if color2 is None else color2, fail)
         self.placements.append(
-            Placement(part, x, y, z, rot, _color_code(color, fail), self._current_step)
+            Placement(
+                part, x, y, z, rot, _color_code(color, fail), self._current_step, color2=code2
+            )
         )
 
 
@@ -269,6 +438,7 @@ def _moved(
         sub=label,
         sub_index=j,
         sub_step=p.step,
+        color2=p.color2,
     )
 
 

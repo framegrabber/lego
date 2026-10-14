@@ -74,27 +74,46 @@ with m.step():
 
 ### Parts (only these exist)
 
+Sizes are `AxB`: B studs along x, A along z when unrotated (`rot=90/270` swaps them).
+
 | Call | Sizes |
 |---|---|
-| `m.brick(size, x=, y=, z=, color=, rot=0)` | `1x1`, `1x2`, `1x4`, `2x2`, `2x4` |
-| `m.plate(size, x=, y=, z=, color=, rot=0)` | `1x1`, `1x2`, `1x4`, `2x2`, `2x4` |
-| `m.slope(size, x=, y=, z=, color=, facing="front")` | `2x1`, `2x2`, `2x4` |
-| `m.inverted_slope(size, x=, y=, z=, color=, facing="front")` | `2x1`, `2x2` |
+| `m.brick(size, x=, y=, z=, color=, rot=0)` | `1x1` `1x2` `1x3` `1x4` `1x6` `1x8` `1x10` `1x12` `2x2` `2x3` `2x4` `2x6` `2x8` `2x10` |
+| `m.plate(size, …, rot=0)` | `1x1` `1x2` `1x3` `1x4` `1x6` `1x8` `2x2` `2x3` `2x4` `2x6` `2x8` `2x10` `4x4` `4x6` `4x8` `4x10` `6x6` `6x8` `6x10` `8x8` `16x16` |
+| `m.tile(size, …, rot=0)` — smooth top, **nothing attaches on it** | `1x1` `1x2` `1x4` `1x6` `1x8` `2x2` `2x4` |
+| `m.round_plate("1x1", …)`, `m.round_brick(size, …)`, `m.cone("1x1", …)` | round brick `1x1` `2x2`; cones are brick height with one stud |
+| `m.baseplate(x=, y=, z=, color="green")` — 32x32, thin, nothing attaches underneath | `32x32` |
+| `m.arch(size, …, rot=0)` — studs on top, stands on its **two ends** only | `1x4` `1x6` (brick high, opening 1 plate) `1x8` (2 bricks high) |
+| `m.window(size, …, rot=0, glass_color="trans_clear")` — frame with glass | `1x2x2` (2 bricks high) `1x2x3` |
+| `m.door("1x4x6", …, rot=0, door_color="red")` — frame with door; studs only on the middle 2 top cells | `1x4x6` (6 bricks high) |
+| `m.wheels(x=, y=, z=, color=, rot=0, rim_color="light_bluish_grey")` — 2x2 plate with two wheels | `small` |
+| `m.slope(size, …, facing="front", angle=45)` | 45°: `2x1` `2x2` `2x4`; 33°: `3x2` `3x4`; 65°: `2x1` (2 bricks high); 75°: `2x1` (3 bricks high) |
+| `m.inverted_slope(size, …, facing="front")` | `2x1` `2x2` |
+| `m.curved_slope(size, …, facing="front")` — no studs | `2x1` `2x2` (2 plates high), `4x1` `4x2` (brick high) |
+| `m.cheese_slope(x=, y=, z=, color=, facing="front")` — 1x2, 2 plates high, no studs | `1x2` |
+| `m.corner_slope(corner, …, facing="front-right")` — `"outside"` (1 stud) or `"inside"` (3 studs) | facings `front-right` `front-left` `back-left` `back-right` |
 
-Slopes are 45°, brick height (3 levels), always 2 studs deep in the direction they face.
-`facing` is where the sloped face points: `"front"` (−z), `"back"` (+z), `"left"` (−x),
-`"right"` (+x). A `"front"`/`"back"` slope `2xN` covers N studs along x and 2 along z; a
-`"left"`/`"right"` one covers 2 along x and N along z. `(x, z)` is still the footprint's min
+**Slopes** point their sloped face to `facing`: `"front"` (−z), `"back"` (+z), `"left"` (−x),
+`"right"` (+x). They are deeper in the facing direction: a `"front"` slope `AxB` covers B studs
+along x and A along z; `"left"`/`"right"` swap that. `(x, z)` is still the footprint's min
 corner.
 
-- **Slope:** full underside (sits on any studs), but **studs only on the row opposite the
-  face**. Nothing can be attached on the sloped face.
-- **Inverted slope:** full studs on top, but only the row opposite the face can sit on studs
-  below; the sloped underside overhangs. Good for noses, wings and roof eaves.
+- **Slopes:** full underside (sit on any studs), **studs only on the back row** (opposite the
+  face). Nothing attaches on the sloped face.
+- **Inverted slopes:** full studs on top; only the back row sits on studs below.
+- **Curved slopes:** no studs; only their low front rows sit on studs (hollow under the curve).
 - The checker treats a slope as its full box: nothing may be placed inside that box above the
-  sloped face. A part sitting at the slope's top level (`y + 3`) on the stud row is fine, and
-  so is a narrower slope row stacked one stud inward.
-- Example: `models/examples/slopes.py` (all four directions).
+  sloped face. A part at the slope's top level (`y + height`) on the stud row is fine, and so
+  is a narrower slope row stacked one stud inward.
+- **Arches** leave their opening free: a 1x4/1x6 arch has room for one plate underneath, the
+  1x8 for a brick and more in the middle.
+- **Wheels:** unrotated the axle runs along x, so the wheels sit one stud left and right of the
+  2x2 holder and reach **2 plates below** it (the tyres stand on the table; the holder's `y` is
+  2 when the car stands at level 0). For a car pointing along x use `rot=90`, and keep the body
+  only 2 studs wide over the holders or the wheels collide with it. Attach wheels under a
+  chassis plate (they press on from below).
+- Examples: `models/examples/slopes.py`, `models/examples/parts_showcase.py`,
+  `models/examples/car.py`.
 
 Colors: LDraw names, lowercase with underscores. Good kid palette: `red`, `blue`, `yellow`,
 `green`, `black`, `white`, `orange`, `lime`, `tan`, `brown`, `light_bluish_grey`,
@@ -195,17 +214,18 @@ with m.step():
   that the legs are attached under in step 2).
 - Two legs (or towers) can't be built side by side on the table and joined later. Build them as
   a sub-assembly and attach both under a hip part that is already there.
-- Vehicles: build each axle (two wheel blocks joined by crossed plates) as a sub-assembly. Start
-  the chassis on the rear axle and attach the front axle in the step where the floor reaches it.
-  There are no round wheels; 2x2 bricks stand in for them.
+- Vehicles: put `m.wheels(…, rot=90)` under a 2-stud-wide chassis plate (see
+  `models/examples/car.py`); for wider bodies, raise the body on a narrower chassis so the
+  wheels have room beside it. Head/nose at +x.
 - Alternate the direction of joints between layers so each layer locks the one below.
 - **Watch for seams that line up through every layer.** Bricks stacked so their joints fall at
   the same x (or z) on every layer form separate towers that only touch side by side. Every
   such column must be bridged by at least one part on some layer.
 - A 1-stud-wide column is weak; use 2×2 bricks or interleave.
 - Details on **top** surfaces (lights, buttons, antennas) are 1×1 plates or bricks on studs.
-  Details on **side faces** (eyes, windows, a chest light, a door) can't be attached sideways
-  with these parts: build them into the wall as a differently colored brick in that layer.
+  Details on **side faces** (eyes, a chest light) can't be attached sideways with these parts:
+  build them into the wall as a differently colored brick in that layer. Real windows and
+  doors are `m.window(…)` and `m.door(…)`; smooth tops are tiles.
 - Symmetry is cheap in code: compute one side and mirror `x` (or `z`) with a helper.
 - Roofs, car noses, wing edges: use slopes facing outward; stack a narrower slope row on top
   for a taller roof, and **fill the gable ends** (bricks in the wall's colour under each slope

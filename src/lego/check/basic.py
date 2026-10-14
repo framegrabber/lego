@@ -27,12 +27,11 @@ def collisions(model: Model) -> Report:
     owner: dict[tuple[int, int, int], int] = {}
     first_overlap: dict[tuple[int, int], tuple[int, int, int]] = {}
     for i, p in enumerate(model.placements):
-        for x, z in sorted(p.cells()):
-            for y in p.levels():
-                cell = (x, y, z)
-                other = owner.setdefault(cell, i)
-                if other != i:
-                    first_overlap.setdefault((other, i), cell)
+        for x, y, z in sorted(p.occupied(), key=lambda c: (c[1], c[0], c[2])):
+            cell = (x, y, z)
+            other = owner.setdefault(cell, i)
+            if other != i:
+                first_overlap.setdefault((other, i), cell)
     for (a, b), cell in first_overlap.items():
         report.issues.append(
             Issue("parts overlap", [PartRef.of(model, a), PartRef.of(model, b)], cell)

@@ -2,7 +2,7 @@
 
 from dataclasses import asdict, dataclass, field
 
-from lego.dsl import FACINGS, Model, Placement
+from lego.dsl import Model, Placement, turn_text
 from lego.parts import colors
 
 
@@ -57,13 +57,18 @@ class Report:
 
 
 def describe(p: Placement) -> str:
+    """The DSL call that places `p`, e.g. "slope('3x2', x=0, y=1, z=0, color='red',
+    facing='front', angle=33)"."""
     names = {code: name for name, code in colors().items()}
     color = names.get(p.color, p.color)
-    if p.part.kind in ("slope", "inverted_slope"):
-        last = f"facing={next(f for f, r in FACINGS.items() if r == p.rot)!r}"
-    else:
-        last = f"rot={p.rot}"
-    return f"{p.part.kind}({p.part.size!r}, x={p.x}, y={p.y}, z={p.z}, color={color!r}, {last})"
+    extra = f", {p.part.extra_arg}" if p.part.extra_arg else ""
+    second = ""
+    if p.part.second_param and p.color2 is not None:
+        second = f", {p.part.second_param}={names.get(p.color2, p.color2)!r}"
+    return (
+        f"{p.part.call}({p.part.size!r}, x={p.x}, y={p.y}, z={p.z}, color={color!r}, "
+        f"{turn_text(p.part, p.rot)}{extra}{second})"
+    )
 
 
 def to_json(reports: list[Report]) -> dict:

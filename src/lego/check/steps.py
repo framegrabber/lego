@@ -35,7 +35,7 @@ def steps_connected(model: Model) -> Report:
     report = Report("B4", "step-wise connected")
     if not model.placements:
         return report
-    bottom = min(p.y for p in model.placements)
+    bottom = min(p.bottom for p in model.placements)
     neighbours: dict[int, set[int]] = {i: set() for i in range(len(model.placements))}
     for a, b in connections(model.placements):
         neighbours[a].add(b)
@@ -57,7 +57,7 @@ def steps_connected(model: Model) -> Report:
         if len(pieces) == 1:
             continue
         if step == 0:
-            above = [i for i in added if model.placements[i].y != bottom]
+            above = [i for i in added if model.placements[i].bottom != bottom]
             if not above:
                 continue  # loose bottom-layer parts are allowed in step 1
             first = model.placements[above[0]]
@@ -175,9 +175,8 @@ def insertable(model: Model) -> Report:
         for unit in units:
             for i in unit:
                 p = model.placements[i]
-                for x, z in p.cells():
-                    for y in p.levels():
-                        placed[(x, y, z)] = i
+                for cell in p.occupied():
+                    placed[cell] = i
     return _also_in_subassemblies(model, report, insertable)
 
 

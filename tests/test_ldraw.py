@@ -53,7 +53,7 @@ def test_hand_written_model_parses_onto_grid():
         ("1 15 0 -48 20 1 0 0 0 1 0 0 0 1 3005.dat", "x position is not on the brick grid"),
         ("1 4 0 -30 0 1 0 0 0 1 0 0 0 1 3001.dat", "height is not on the brick grid"),
         ("1 4 0 0 0 0.7071 0 0.7071 0 1 0 -0.7071 0 0.7071 3001.dat", "rotation must be"),
-        ("1 4 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat", "not in the supported vocabulary"),
+        ("1 4 0 0 0 1 0 0 0 1 0 0 0 1 3794b.dat", "not in the supported vocabulary"),
         ("1 9999 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "unknown LDraw color code"),
     ],
 )

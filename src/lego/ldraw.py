@@ -8,10 +8,11 @@ origin at LDraw Y = −(y + h) · 8. Rotations are about the vertical axis:
 
 import math
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from lego.dsl import FACINGS, ROTATIONS, Attachment, DesignError, Model, Placement
-from lego.parts import LDU_PER_PLATE, LDU_PER_STUD, PARTS_BY_ID
+from lego.dsl import ROTATIONS, Attachment, DesignError, Model, Placement, component_color
+from lego.parts import LDU_PER_PLATE, LDU_PER_STUD, PARTS_BY_ID, Part
 from lego.paths import write_atomic
 
 type Matrix = tuple[int, ...]
@@ -31,22 +32,52 @@ def _matrix(rot: int) -> Matrix:
 
 
 _ROT_BY_MATRIX: dict[Matrix, int] = {_matrix(r): r for r in ROTATIONS}
-_FACING_BY_ROT = {rot: facing for facing, rot in FACINGS.items()}
 
 
-def _origin_offset(dz: int, rot: int) -> tuple[int, int]:
-    """R(rot) · (0, 0, dz): where the part's LDraw origin sits relative to its footprint centre."""
-    r = _matrix(rot)
-    return r[2] * dz, r[8] * dz
+def _rotate(r: Matrix, v: tuple[int, int, int]) -> tuple[int, int, int]:
+    return (
+        r[0] * v[0] + r[1] * v[1] + r[2] * v[2],
+        r[3] * v[0] + r[4] * v[1] + r[5] * v[2],
+        r[6] * v[0] + r[7] * v[1] + r[8] * v[2],
+    )
+
+
+def _compose(a: Matrix, b: Matrix) -> Matrix:
+    return tuple(
+        sum(a[3 * i + k] * b[3 * k + j] for k in range(3)) for i in range(3) for j in range(3)
+    )
+
+
+def _origin(p: Placement) -> tuple[int, int, int]:
+    """LDraw position of the part's origin: footprint centre and top, plus its rotated offset."""
+    ox, oy, oz = _rotate(_matrix(p.rot), p.part.origin)
+    x = p.x * LDU_PER_STUD + p.size_x * _HALF_STUD + ox
+    z = p.z * LDU_PER_STUD + p.size_z * _HALF_STUD + oz
+    y = -(p.y + p.part.height) * LDU_PER_PLATE + oy
+    return x, y, z
 
 
 def _line(p: Placement) -> str:
-    ox, oz = _origin_offset(p.part.origin_dz, p.rot)
-    x = p.x * LDU_PER_STUD + p.size_x * _HALF_STUD + ox
-    z = p.z * LDU_PER_STUD + p.size_z * _HALF_STUD + oz
-    y = -(p.y + p.part.height) * LDU_PER_PLATE
+    x, y, z = _origin(p)
     matrix = " ".join(map(str, _matrix(p.rot)))
     return f"1 {p.color} {x} {y} {z} {matrix} {p.part.filename}"
+
+
+def _lines(p: Placement) -> list[str]:
+    """The part's LDraw lines; compound parts (wheels, windows, doors) are announced by a
+    `0 !LEGO COMPOUND n` comment and followed by their n component lines."""
+    if not p.part.components:
+        return [_line(p)]
+    r = _matrix(p.rot)
+    origin = _origin(p)
+    lines = [f"0 !LEGO COMPOUND {len(p.part.components)}", _line(p)]
+    for c in p.part.components:
+        dx, dy, dz = _rotate(r, c.offset)
+        color = component_color(c, p)
+        matrix = " ".join(map(str, _compose(r, c.matrix)))
+        x, y, z = origin[0] + dx, origin[1] + dy, origin[2] + dz
+        lines.append(f"1 {color} {x} {y} {z} {matrix} {c.ldraw_id}.dat")
+    return lines
 
 
 def _slug(name: str) -> str:
@@ -79,7 +110,7 @@ def dumps(model: Model) -> str:
             if p.step != step:
                 continue
             if p.sub is None:
-                lines.append(_line(p))
+                lines += _lines(p)
             elif p.sub_index == 0:
                 lines.append(_attachment_line(by_label[p.sub]))
         lines.append("0 STEP")
@@ -88,7 +119,7 @@ def dumps(model: Model) -> str:
     for sub in attached.values():
         lines += _header(sub)
         for step in range(sub.num_steps):
-            lines += [_line(p) for p in sub.placements if p.step == step]
+            lines += [line for p in sub.placements if p.step == step for line in _lines(p)]
             lines.append("0 STEP")
         lines.append("0 NOFILE")
     return "\n".join(lines) + "\n"
@@ -134,8 +165,8 @@ def _parse_attachment(tokens: list[str], lineno: int) -> dict[str, int]:
     }
 
 
-def _parse_part_line(tokens: list[str], lineno: int) -> tuple[str, dict[str, int | str]]:
-    """Return (kind method name, DSL keyword arguments incl. size) for one type-1 line."""
+def _parse_part_line(tokens: list[str], lineno: int) -> tuple[Part, dict[str, int]]:
+    """Return the part and its grid position, rotation and color for one type-1 line."""
 
     def fail(reason: str) -> LDrawError:
         return LDrawError(f"line {lineno}: {reason}")
@@ -153,26 +184,32 @@ def _parse_part_line(tokens: list[str], lineno: int) -> tuple[str, dict[str, int
         raise fail(f"malformed number: {e}") from e
     rot = _rotation(tokens, fail)
     size_x, size_z = (part.depth, part.width) if rot in (90, 270) else (part.width, part.depth)
-    ox, oz = _origin_offset(part.origin_dz, rot)
-    x_ldu, z_ldu = x_ldu - ox, z_ldu - oz
+    ox, oy, oz = _rotate(_matrix(rot), part.origin)
+    x_ldu, y_ldu, z_ldu = x_ldu - ox, y_ldu - oy, z_ldu - oz
     x = _grid(x_ldu - size_x * _HALF_STUD, LDU_PER_STUD, f"{part.filename} x position", fail)
     z = _grid(z_ldu - size_z * _HALF_STUD, LDU_PER_STUD, f"{part.filename} z position", fail)
     y = _grid(-y_ldu, LDU_PER_PLATE, f"{part.filename} height", fail) - part.height
-    return part.kind, {"size": part.size, "x": x, "y": y, "z": z, "rot": rot, "color": color}
+    return part, {"x": x, "y": y, "z": z, "rot": rot, "color": color}
 
 
-type _Line = tuple[int, list[str]]
+@dataclass
+class _Item:
+    lineno: int
+    tokens: list[str]
+    components: list[list[str]] = field(default_factory=list)  # compound part lines
 
 
 class _Section:
     def __init__(self, filename: str) -> None:
         self.filename = filename
         self.title: str | None = None
-        self.steps: list[list[_Line]] = [[]]
+        self.steps: list[list[_Item]] = [[]]
 
 
 def _sections(text: str) -> list[_Section]:
     sections: list[_Section] = []
+    compound = 0  # component lines still to collect for the last part
+    announced = 0  # a `0 !LEGO COMPOUND n` comment is waiting for its base part
     for lineno, raw in enumerate(text.splitlines(), start=1):
         tokens = raw.split()
         if not tokens:
@@ -183,13 +220,20 @@ def _sections(text: str) -> list[_Section]:
         if not sections:
             sections.append(_Section(""))  # plain .ldr without FILE headers
         section = sections[-1]
-        if tokens[0] == "0":
+        if tokens[:3] == ["0", "!LEGO", "COMPOUND"]:
+            announced = int(tokens[3])
+        elif tokens[0] == "0":
             if tokens[1:2] == ["STEP"]:
                 section.steps.append([])
             elif section.title is None and tokens[1:2] not in (["Name:"], ["Author:"]):
                 section.title = " ".join(tokens[1:])
         elif tokens[0] == "1":
-            section.steps[-1].append((lineno, tokens))
+            if compound:
+                section.steps[-1][-1].components.append(tokens)
+                compound -= 1
+            else:
+                section.steps[-1].append(_Item(lineno, tokens))
+                compound, announced = announced, 0
         elif tokens[0] in ("2", "3", "4", "5"):
             raise LDrawError(f"line {lineno}: raw geometry is not supported")
     return sections
@@ -198,21 +242,35 @@ def _sections(text: str) -> list[_Section]:
 def _fill(model: Model, section: _Section, subs: dict[str, Model]) -> None:
     for step in (s for s in section.steps if s):
         with model.step():
-            for lineno, tokens in step:
-                if len(tokens) != 15:
-                    raise LDrawError(f"line {lineno}: expected 15 fields in a part line")
+            for item in step:
+                if len(item.tokens) != 15:
+                    raise LDrawError(f"line {item.lineno}: expected 15 fields in a part line")
                 try:
-                    sub = subs.get(tokens[14].lower())
+                    sub = subs.get(item.tokens[14].lower())
                     if sub is not None:
-                        model.attach(sub, **_parse_attachment(tokens, lineno))
+                        model.attach(sub, **_parse_attachment(item.tokens, item.lineno))
                         continue
-                    kind, kwargs = _parse_part_line(tokens, lineno)
-                    size = str(kwargs.pop("size"))
-                    if kind in ("slope", "inverted_slope"):
-                        kwargs["facing"] = _FACING_BY_ROT[int(kwargs.pop("rot"))]
-                    getattr(model, kind)(size, **kwargs)
+                    part, at = _parse_part_line(item.tokens, item.lineno)
+                    color2 = next(
+                        (
+                            int(line[1])
+                            for c, line in zip(part.components, item.components, strict=False)
+                            if c.color == "second"
+                        ),
+                        None,
+                    )
+                    model._place(
+                        part.kind,
+                        part.size,
+                        at["x"],
+                        at["y"],
+                        at["z"],
+                        at["color"],
+                        rot=at["rot"],
+                        color2=color2,
+                    )
                 except DesignError as e:
-                    raise LDrawError(f"line {lineno}: {e}") from e
+                    raise LDrawError(f"line {item.lineno}: {e}") from e
 
 
 def loads(text: str, name: str = "model") -> Model:

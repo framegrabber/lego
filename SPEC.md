@@ -105,7 +105,16 @@ Axis-aligned parts, rotations in 90° steps:
 - Plates: 1×1 (3024), 1×2 (3023), 1×4 (3710), 2×2 (3022), 2×4 (3020)
 - Slopes 45°: 2×1 (3040b), 2×2 (3039), 2×4 (3037); inverted 2×1 (3665b), 2×2 (3660b) — the
   current library IDs (3040/3665/3660 are "moved to" aliases)
-- Baseplate (optional): 32×32 (3811)
+- Baseplate: 32×32 (3811)
+
+**Vocabulary v2 (user request 2026-10-14):** more brick/plate sizes (up to 2×10 bricks, 16×16
+plates), tiles, round 1×1/2×2 parts, cones, 33°/65°/75° slopes, cheese slope, curved slopes,
+corner slopes, arches 1×4/1×6/1×8, window frames with glass, a door frame with door, and
+**wheels** (2×2 plate with wheel pins + two rims + tyres). Windows, doors and wheels are
+*compound parts*: one DSL call, several LDraw parts, announced by `0 !LEGO COMPOUND n`.
+Parts may occupy cells outside their footprint (wheels) or leave cells free (arch openings);
+"standing on the table" means the lowest occupied level. Each part's footprint, height, origin,
+studs and anti-studs are checked against its library file by `tests/test_parts_geometry.py`.
 
 Every part declares its connection geometry as data in `parts`: footprint, height, stud positions
 (slopes: back row only), anti-stud positions (inverted slopes: back row only), and occupancy.
@@ -116,7 +125,7 @@ placement in the empty space above a slope face but never accepts an invalid one
 Slopes are implemented (Task 13): stud/anti-stud rows as part data, `facing` in the DSL, LDraw
 origin offset (stud-row centre), visually verified in all four directions.
 
-Extension (after v1 passes the eval set): tiles, round bricks, wheels, SNOT.
+Not yet: SNOT (sideways studs), Technic pins/axles, hinges, larger wheels, minifigures.
 
 ## Tech Stack
 
