@@ -1,5 +1,7 @@
 # Kids' LEGO Designer
 
+[![CI](https://github.com/framegrabber/lego/actions/workflows/ci.yml/badge.svg)](https://github.com/framegrabber/lego/actions/workflows/ci.yml)
+
 A kid describes a model; Claude designs it as a short Python program; deterministic checks prove
 it can be built from real bricks; the kid follows step-by-step instructions in a browser.
 
