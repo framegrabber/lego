@@ -192,10 +192,10 @@ m = Model("racing car")
 
 with m.step():
     m.plate("2x4", x=0, z=0, y=0, color="black")
-    m.plate("2x4", x=0, z=2, y=0, color="black")   # unrotated 2x4: 4 studs in x, 2 in z
+    m.plate("2x4", x=0, z=2, y=0, color="black")  # unrotated 2x4: 4 studs in x, 2 in z
 
 with m.step():
-    m.brick("2x4", x=0, z=1, y=1, color="red")     # covers z 1..3: bridges both plates
+    m.brick("2x4", x=0, z=1, y=1, color="red")  # covers z 1..3: bridges both plates
 
 m.save("out/car.mpd")
 ```

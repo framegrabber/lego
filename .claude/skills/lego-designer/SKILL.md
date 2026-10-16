@@ -49,12 +49,12 @@ from lego.dsl import Model
 
 m = Model("lighthouse")
 
-with m.step():                                   # every part belongs to a step
+with m.step():  # every part belongs to a step
     m.plate("2x4", x=0, z=0, y=0, color="black")
     m.plate("2x4", x=0, z=2, y=0, color="black")
 
 with m.step():
-    m.brick("2x4", x=0, z=1, y=1, color="red")   # sits on top of both plates
+    m.brick("2x4", x=0, z=1, y=1, color="red")  # sits on top of both plates
 ```
 
 ### Coordinates (all integers)
@@ -128,18 +128,18 @@ coordinates, then attached in one step of the main model, like the "build this f
 real instructions. Copies of the same sub-assembly can be attached several times.
 
 ```python
-leg = m.subassembly("leg")                     # one level deep; name must be unique
+leg = m.subassembly("leg")  # one level deep; name must be unique
 with leg.step():
     leg.plate("2x4", x=0, z=-1, y=0, color="black", rot=90)
     leg.brick("2x2", x=0, z=0, y=1, color="light_bluish_grey")
 with leg.step():
     leg.brick("2x2", x=0, z=0, y=4, color="light_bluish_grey")
 
-with m.step():                                  # hips
+with m.step():  # hips
     m.plate("2x4", x=0, z=0, y=7, color="red")
 with m.step():
-    m.attach(leg, x=0, y=0, z=0)                # leg's (0, 0, 0) lands at (0, 0, 0)
-    m.attach(leg, x=2, y=0, z=0, rot=0)         # second copy
+    m.attach(leg, x=0, y=0, z=0)  # leg's (0, 0, 0) lands at (0, 0, 0)
+    m.attach(leg, x=2, y=0, z=0, rot=0)  # second copy
 ```
 
 - Finish all of a sub-assembly's steps before attaching it; it can't be changed afterwards.
