@@ -18,10 +18,10 @@ GRASS = "green"
 WATER = "blue"
 
 # heights (plate levels)
-BASE = 0           # bottom plates
+BASE = 0  # bottom plates
 L1, L2, L3 = 1, 4, 7  # brick layers of abutments / pier
-DECK = 10          # deck beam plates
-TOP = 11           # road plates + railing posts
+DECK = 10  # deck beam plates
+TOP = 11  # road plates + railing posts
 
 
 def mx(x, w=1):
@@ -50,7 +50,7 @@ with m.step():
 with m.step():
     m.brick("2x4", x=0, z=1, y=L1, color=STONE, rot=90)
     m.brick("2x4", x=2, z=1, y=L1, color=STONE, rot=90)
-    m.brick("2x4", x=7, z=1, y=L1, color=STONE, rot=90)    # pier
+    m.brick("2x4", x=7, z=1, y=L1, color=STONE, rot=90)  # pier
     m.plate("1x2", x=3, z=0, y=L1, color="dark_bluish_grey")  # rock on the shore
 
 # --- right half of the river, pressed up under the pier ---
@@ -84,6 +84,7 @@ with m.step():
 def abutment_layer2(mirror):
     def X(x, w):
         return mx(x, w) if mirror else x
+
     m.brick("1x4", x=X(0, 1), z=1, y=L2, color=STONE, rot=90)
     m.brick("2x4", x=X(1, 2), z=1, y=L2, color=STONE, rot=90)
     m.brick("1x4", x=X(3, 1), z=1, y=L2, color=STONE, rot=90)
@@ -91,7 +92,7 @@ def abutment_layer2(mirror):
 
 with m.step():
     abutment_layer2(False)
-    m.brick("2x4", x=7, z=1, y=L2, color=STONE, rot=90)    # pier
+    m.brick("2x4", x=7, z=1, y=L2, color=STONE, rot=90)  # pier
 with m.step():
     abutment_layer2(True)
 
@@ -100,11 +101,13 @@ with m.step():
 def abutment_layer3(mirror):
     def X(x, w):
         return mx(x, w) if mirror else x
+
     m.brick("2x4", x=X(0, 2), z=1, y=L3, color=STONE, rot=90)
     m.brick("1x4", x=X(2, 1), z=1, y=L3, color=STONE, rot=90)
     for z in (1, 3):
-        m.inverted_slope("2x2", x=X(3, 2), z=z, y=L3, color=STONE,
-                         facing="left" if mirror else "right")
+        m.inverted_slope(
+            "2x2", x=X(3, 2), z=z, y=L3, color=STONE, facing="left" if mirror else "right"
+        )
 
 
 with m.step():

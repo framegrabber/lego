@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint and type check
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run basedpyright
+
+      # The LDraw parts library (~150 MB download) is cached between runs.
+      - name: Cache LDraw library
+        uses: actions/cache@v4
+        with:
+          path: ldraw
+          key: ldraw-${{ hashFiles('src/lego/setup.py') }}
+
+      - name: Install headless Chromium (with system libraries)
+        run: uv run playwright install --with-deps chromium
+
+      - name: Download LDraw library
+        run: uv run lego setup
+
+      - name: Tests
+        run: uv run pytest -q
+
+      - name: Every model builds and passes all checks
+        run: |
+          for f in models/wall.py models/examples/*.py models/designs/*.py; do
+            echo "== $f"
+            uv run lego build "$f" -o "out/ci/$(basename "$f" .py).mpd"
+            uv run lego check "out/ci/$(basename "$f" .py).mpd"
+          done
+
+      - name: Every broken fixture fails its checks
+        run: |
+          for f in models/broken/*.py; do
+            if uv run lego check "$f" > /dev/null; then
+              echo "::error file=$f::expected this broken fixture to fail lego check"
+              exit 1
+            fi
+          done
+
+      - name: Render smoke test
+        run: |
+          uv run lego render out/ci/car.mpd -o out/ci/renders
+          uv run lego render out/ci/two_legs.mpd -o out/ci/renders --step 2
+
+      - name: Upload renders
+        uses: actions/upload-artifact@v4
+        with:
+          name: renders
+          path: out/ci/renders

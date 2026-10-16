@@ -88,8 +88,10 @@ def test_parts_list_names_components_separately():
     [
         (lambda m: m.slope("3x2", x=0, z=0, y=0, color="red", angle=50), "angle must be one of"),
         (lambda m: m.slope("2x2", x=0, z=0, y=0, color="red", angle=33), "unknown slope33 size"),
-        (lambda m: m.corner_slope("outside", x=0, z=0, y=0, color="red", facing="up"),
-         "facing must be one of"),
+        (
+            lambda m: m.corner_slope("outside", x=0, z=0, y=0, color="red", facing="up"),
+            "facing must be one of",
+        ),
         (lambda m: m.tile("3x3", x=0, z=0, y=0, color="red"), "unknown tile size"),
     ],
 )

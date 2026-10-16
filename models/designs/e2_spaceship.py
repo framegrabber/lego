@@ -82,6 +82,7 @@ with m.step():
 # Middle wing row: outer lower plates hang under the upper row, so they share a step.
 for mirrored in (False, True):
     with m.step():
+
         def z_of(z: int, d: int) -> int:
             return mirror_z(z, d) if mirrored else z
 

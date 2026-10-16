@@ -13,9 +13,9 @@ m = Model("tree")
 LEAF = "green"
 GRASS = "green"
 WOOD = "brown"
-TRUNK_X, TRUNK_Z = 3, 2          # min corner of the 2x2 trunk (centre of the 8x6 base)
+TRUNK_X, TRUNK_Z = 3, 2  # min corner of the 2x2 trunk (centre of the 8x6 base)
 TRUNK_BRICKS = 4
-CROWN_Y = 2 + 3 * TRUNK_BRICKS   # roots plate top is y=2
+CROWN_Y = 2 + 3 * TRUNK_BRICKS  # roots plate top is y=2
 
 # ---- crown sub-assembly: local (0, 0) is the trunk's min corner, crown spans -3..5 ----
 crown = m.subassembly("crown")

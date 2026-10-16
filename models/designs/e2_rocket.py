@@ -17,9 +17,9 @@ BODY = "white"
 STRIPE = "red"
 TOWER = "orange"
 
-BX, BZ = 2, 2          # rocket body min corner (4x4)
-TX, TZ = 8, 3          # tower min corner (2x2), right next to the right fin
-PAD_Y = 2              # top of the pad
+BX, BZ = 2, 2  # rocket body min corner (4x4)
+TX, TZ = 8, 3  # tower min corner (2x2), right next to the right fin
+PAD_Y = 2  # top of the pad
 
 # --- launch pad ----------------------------------------------------------------
 # Bottom: 2x4 plates in 3 columns (x 0, 4, 8) and 4 rows (z 0, 2, 4, 6).
@@ -34,33 +34,33 @@ def top(x, z, size="2x4", rot=0):
     m.plate(size, x=x, y=1, z=z, color=PAD_TOP, rot=rot)
 
 
-with m.step():                      # front two rows, loose on the table
+with m.step():  # front two rows, loose on the table
     for z in (0, 2):
         for x in (0, 4, 8):
             low(x, z)
 
-with m.step():                      # lock them together
+with m.step():  # lock them together
     top(2, 1)
     top(6, 1)
 
-for z in (4, 6):                    # next row underneath + its locking plates on top
+for z in (4, 6):  # next row underneath + its locking plates on top
     with m.step():
         for x in (0, 4, 8):
             low(x, z)
         top(2, z - 1)
         top(6, z - 1)
 
-with m.step():                      # left and right edges of the top layer
+with m.step():  # left and right edges of the top layer
     for x in (0, 10):
         for z in (0, 4):
             top(x, z, rot=90)
 
-with m.step():                      # front and back edges of the top layer
+with m.step():  # front and back edges of the top layer
     for z in (0, 7):
         for x in (2, 6):
             top(x, z, size="1x4")
 
-with m.step():                      # yellow markers in the corners
+with m.step():  # yellow markers in the corners
     for x in (0, 10):
         for z in (0, 7):
             m.plate("1x2", x=x, y=PAD_Y, z=z, color="yellow")
@@ -138,13 +138,13 @@ for group in ([0, 1], [2], [3], [4, 5], [6, 7]):
             i += 1
 
 # --- nose cone ------------------------------------------------------------------
-with m.step():                      # front/back slopes, studs on the middle two rows
+with m.step():  # front/back slopes, studs on the middle two rows
     for x in (BX, BX + 2):
         m.slope("2x2", x=x, y=y, z=BZ, color=STRIPE, facing="front")
         m.slope("2x2", x=x, y=y, z=BZ + 2, color=STRIPE, facing="back")
 y += 3
 
-with m.step():                      # left/right slopes on the middle rows, then the tip
+with m.step():  # left/right slopes on the middle rows, then the tip
     m.slope("2x2", x=BX, y=y, z=BZ + 1, color=STRIPE, facing="left")
     m.slope("2x2", x=BX + 2, y=y, z=BZ + 1, color=STRIPE, facing="right")
     m.plate("2x2", x=BX + 1, y=y + 3, z=BZ + 1, color=STRIPE)
@@ -163,7 +163,7 @@ with m.step():
         m.brick("2x2", x=TX, y=ty, z=TZ, color=TOWER if k % 2 == 0 else "light_bluish_grey")
         ty += 3
 
-with m.step():                      # arm toward the rocket, cap and warning light
+with m.step():  # arm toward the rocket, cap and warning light
     m.plate("2x4", x=TX - 2, y=ty, z=TZ, color="yellow")
     m.plate("2x2", x=TX, y=ty + 1, z=TZ, color=TOWER)
     m.plate("1x1", x=TX, y=ty + 2, z=TZ, color="trans_red")

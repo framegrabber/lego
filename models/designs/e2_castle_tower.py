@@ -51,10 +51,18 @@ def sides(pattern):
     so the short pieces sit at opposite corners (a pinwheel), staggering every seam.
     """
     if pattern == "A":
-        return [("x", LO, LO, HI, False), ("x", HI, LO, HI, True),
-                ("z", LO, LO + 1, HI - 1, False), ("z", HI, LO + 1, HI - 1, True)]
-    return [("z", LO, LO, HI, False), ("z", HI, LO, HI, True),
-            ("x", LO, LO + 1, HI - 1, False), ("x", HI, LO + 1, HI - 1, True)]
+        return [
+            ("x", LO, LO, HI, False),
+            ("x", HI, LO, HI, True),
+            ("z", LO, LO + 1, HI - 1, False),
+            ("z", HI, LO + 1, HI - 1, True),
+        ]
+    return [
+        ("z", LO, LO, HI, False),
+        ("z", HI, LO, HI, True),
+        ("x", LO, LO + 1, HI - 1, False),
+        ("x", HI, LO + 1, HI - 1, True),
+    ]
 
 
 def course(n):
@@ -85,7 +93,7 @@ def course(n):
                 pos.reverse()
             i = 0
             for length in split(len(pos)):
-                chunk = pos[i:i + length]
+                chunk = pos[i : i + length]
                 i += length
                 lo = min(chunk)
                 if axis == "x":
@@ -103,7 +111,7 @@ def brick(spec, y):
 def in_steps(items, place, size=6):
     for i in range(0, len(items), size):
         with m.step():
-            for it in items[i:i + size]:
+            for it in items[i : i + size]:
                 place(it)
 
 
@@ -112,13 +120,18 @@ lawn = [(x, z) for z in (0, 2, 4, 6) for x in (0, 4)]
 late_lawn = [(4, 2), (4, 4)]  # added in steps 2 and 3, under / beside the plinth bricks
 first = course(1)
 # Step 2 bricks: the ones that join every lawn plate of steps 1-2 into one piece.
-locking = [s for s in first if (s[1], s[2], s[0]) in {
-    (LO, LO, "1x4"),        # left wall z 1..4: rows 0, 1, 2 (left)
-    (HI, 3, "1x4"),         # right wall z 3..6: rows 1, (2), 3 (right)
-    (HI, LO, "1x2"),        # right wall z 1..2: rows 0, 1 (right)
-    (3, LO, "1x2"),         # door x 3..4: row 0 left + right
-    (2, HI, "1x4"),         # back wall x 2..5: row 3 left + right
-}]
+locking = [
+    s
+    for s in first
+    if (s[1], s[2], s[0])
+    in {
+        (LO, LO, "1x4"),  # left wall z 1..4: rows 0, 1, 2 (left)
+        (HI, 3, "1x4"),  # right wall z 3..6: rows 1, (2), 3 (right)
+        (HI, LO, "1x2"),  # right wall z 1..2: rows 0, 1 (right)
+        (3, LO, "1x2"),  # door x 3..4: row 0 left + right
+        (2, HI, "1x4"),  # back wall x 2..5: row 3 left + right
+    }
+]
 rest = [s for s in first if s not in locking]
 assert len(locking) == 5, locking
 
@@ -145,8 +158,11 @@ for n in range(2, WALL_LAYERS + 1):
 cy = course_y(WALL_LAYERS + 1)
 corbels = [(x, 0, "front") for x in (1, 3, 5)] + [(x, 6, "back") for x in (1, 3, 5)]
 corbels += [(0, z, "left") for z in (2, 4)] + [(6, z, "right") for z in (2, 4)]
-in_steps(corbels, lambda c: m.inverted_slope("2x2", x=c[0], z=c[1], y=cy, color=STONE,
-                                             facing=c[2]), size=5)
+in_steps(
+    corbels,
+    lambda c: m.inverted_slope("2x2", x=c[0], z=c[1], y=cy, color=STONE, facing=c[2]),
+    size=5,
+)
 
 # --- Roof floor: 8x8 of plates, same layout as the lawn but rotated, over the corbels --------
 ry = cy + 3

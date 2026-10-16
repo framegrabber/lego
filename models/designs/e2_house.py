@@ -9,16 +9,16 @@ from lego.dsl import Model
 
 m = Model("e2_house")
 
-W, D = 8, 6                 # footprint: x 0..7, z 0..5
-FRONT, BACK = 0, D - 1      # wall rows along z
-LEFT, RIGHT = 0, W - 1      # wall columns along x
+W, D = 8, 6  # footprint: x 0..7, z 0..5
+FRONT, BACK = 0, D - 1  # wall rows along z
+LEFT, RIGHT = 0, W - 1  # wall columns along x
 BASE = "green"
 WALL = "white"
 DOOR = "brown"
 GLASS = "trans_light_blue"
 ROOF = "red"
-DOOR_X = 3                  # door covers x 3..4
-WIN_X = (1, 6)              # windows are 1 stud wide, in layers 2 and 3
+DOOR_X = 3  # door covers x 3..4
+WIN_X = (1, 6)  # windows are 1 stud wide, in layers 2 and 3
 
 
 def ly(layer):
@@ -26,7 +26,7 @@ def ly(layer):
     return 1 + 3 * (layer - 1)
 
 
-ROOF_Y = ly(5)              # first roof row sits on top of the walls
+ROOF_Y = ly(5)  # first roof row sits on top of the walls
 
 
 def side_long(layer):
@@ -134,5 +134,5 @@ with m.step():
         m.slope("2x4", x=x, z=BACK - 2, y=ROOF_Y + 6, color=ROOF, facing="back")
         m.plate("2x4", x=x, z=2, y=ROOF_Y + 9, color=ROOF)
 
-with m.step():                                   # chimney on the ridge
+with m.step():  # chimney on the ridge
     m.brick("2x2", x=5, z=2, y=ROOF_Y + 10, color="dark_bluish_grey")
